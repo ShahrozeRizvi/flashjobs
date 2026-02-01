@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlashJobs 2.0 — Level Up Your Career!</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --pixel-red: #E63946;
+      --pixel-red-dark: #B82D38;
+      --pixel-red-light: #FF4D5A;
+      --coin-gold: #F4D03F;
+      --coin-gold-dark: #D4B02F;
+      --pipe-green: #2ECC71;
+      --pipe-green-dark: #25A85C;
+      --sky-blue: #4ECDC4;
+      --bg-main: #FEFEFE;
+      --bg-card: #FFF8E7;
+      --bg-input: #FFFFFF;
+      --bg-hover: #FFF0D4;
+      --text-dark: #1A1A1A;
+      --text-muted: #666666;
+      --text-light: #FEFEFE;
+      --border-color: #1A1A1A;
+      --shadow-color: #0F0F0F;
+      --pixel-border: 4px solid var(--border-color);
+      --pixel-border-thin: 3px solid var(--border-color);
+    }
+    body {
+      font-family: 'VT323', monospace;
+      background: var(--bg-main);
+      color: var(--text-dark);
+      min-height: 100vh;
+      line-height: 1.4;
+      font-size: 18px;
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(0deg, rgba(0,0,0,0.02) 0px, rgba(0,0,0,0.02) 1px, transparent 1px, transparent 2px);
+      pointer-events: none;
+      z-index: 10000;
+    }
+    .pixel-decoration {
+      position: fixed;
+      font-size: 42px;
+      opacity: 0.4;
+      pointer-events: none;
+      z-index: -1;
+      animation: pixelFloat 6s ease-in-out infinite;
+      filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.2));
+    }
+    .pixel-1 { top: 15%; left: 4%; }
+    .pixel-2 { top: 22%; right: 6%; animation-delay: 1s; }
+    .pixel-3 { bottom: 25%; left: 6%; animation-delay: 2s; }
+    .pixel-4 { bottom: 12%; right: 4%; animation-delay: 3s; }
+    .pixel-5 { top: 50%; left: 2%; animation-delay: 1.5s; font-size: 36px; }
+    .pixel-6 { top: 65%; right: 3%; animation-delay: 2.5s; font-size: 36px; }
+    @keyframes pixelFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    .container { max-width: 650px; margin: 0 auto; padding: 20px; }
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+      padding: 20px;
+      background: var(--pixel-red);
+      border: var(--pixel-border);
+      box-shadow: 6px 6px 0 var(--shadow-color);
+      position: relative;
+    }
+    header::before, header::after {
+      content: '★';
+      position: absolute;
+      font-size: 20px;
+      color: var(--coin-gold);
+      animation: starBlink 1s ease-in-out infinite;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    header::before { left: 20px; }
+    header::after { right: 20px; animation-delay: 0.5s; }
+    @keyframes starBlink { 0%, 100% { opacity: 1; transform: translateY(-50%) scale(1); } 50% { opacity: 0.5; transform: translateY(-50%) scale(0.8); } }
+    .logo { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    .logo-icon { font-size: 32px; animation: logoBlink 0.8s ease-in-out infinite; }
+    @keyframes logoBlink { 0%, 100% { opacity: 1; filter: drop-shadow(0 0 8px var(--coin-gold)); } 50% { opacity: 0.7; filter: drop-shadow(0 0 16px var(--coin-gold)); } }
+    .logo-text {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 20px;
+      color: var(--coin-gold);
+      text-shadow: 3px 3px 0 var(--shadow-color);
+      animation: logoGlow 2s ease-in-out infinite;
+    }
+    @keyframes logoGlow { 0%, 100% { text-shadow: 3px 3px 0 var(--shadow-color), 0 0 10px rgba(244,208,63,0.5); } 50% { text-shadow: 3px 3px 0 var(--shadow-color), 0 0 20px rgba(244,208,63,0.8); } }
+    .logo-version {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 8px;
+      background: var(--coin-gold);
+      color: var(--shadow-color);
+      padding: 4px 8px;
+      border: 2px solid var(--shadow-color);
+    }
+    .tagline { font-size: 16px; color: var(--text-light); margin-top: 10px; letter-spacing: 2px; }
+    .steps-nav { display: flex; justify-content: center; align-items: center; margin-bottom: 24px; }
+    .step-indicator { display: flex; align-items: center; }
+    .step-dot {
+      width: 44px; height: 44px;
+      background: var(--bg-card);
+      border: var(--pixel-border);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 12px;
+      color: var(--text-muted);
+      box-shadow: 4px 4px 0 var(--shadow-color);
+      transition: all 0.2s ease;
+    }
+    .step-dot.active { background: var(--coin-gold); color: var(--shadow-color); animation: stepPulse 1s ease-in-out infinite; }
+    @keyframes stepPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); box-shadow: 6px 6px 0 var(--shadow-color), 0 0 15px rgba(244,208,63,0.5); } }
+    .step-dot.completed { background: var(--pipe-green); color: var(--text-light); }
+    .step-line { width: 50px; height: 6px; background: var(--border-color); margin: 0 4px; }
+    .step-line.completed { background: var(--pipe-green); }
+    .card {
+      background: var(--bg-card);
+      border: var(--pixel-border);
+      box-shadow: 8px 8px 0 var(--shadow-color);
+      padding: 28px;
+      margin-bottom: 24px;
+      transition: all 0.2s ease;
+    }
+    .card:hover { transform: translate(-2px, -2px); box-shadow: 10px 10px 0 var(--shadow-color); }
+    .card-title {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 14px;
+      color: var(--pixel-red);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .card-title-icon { font-size: 24px; animation: iconBounce 2s ease-in-out infinite; }
+    @keyframes iconBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    .card-description { font-size: 20px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.5; }
+    .form-group { margin-bottom: 20px; }
+    .form-label { font-family: 'Press Start 2P', cursive; font-size: 10px; color: var(--text-dark); margin-bottom: 10px; display: block; }
+    .required { color: var(--pixel-red); }
+    .form-input {
+      width: 100%;
+      padding: 14px 16px;
+      background: var(--bg-input);
+      border: var(--pixel-border-thin);
+      color: var(--text-dark);
+      font-family: 'VT323', monospace;
+      font-size: 20px;
+      transition: all 0.2s ease;
+    }
+    .form-input:focus { outline: none; border-color: var(--sky-blue); box-shadow: 0 0 0 4px rgba(78,205,196,0.3), 4px 4px 0 var(--shadow-color); transform: translate(-2px, -2px); }
+    .form-input::placeholder { color: var(--text-muted); }
+    textarea.form-input { min-height: 180px; resize: vertical; line-height: 1.5; }
+    .file-upload {
+      display: block;
+      border: 4px dashed var(--text-muted);
+      background: var(--bg-input);
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .file-upload:hover { border-color: var(--sky-blue); background: var(--bg-hover); transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--shadow-color); }
+    .file-upload input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+    .file-upload-icon { font-size: 48px; margin-bottom: 12px; }
+    .file-upload-text { font-size: 18px; color: var(--text-muted); }
+    .file-upload-text span { color: var(--pixel-red); font-weight: bold; }
+    .files-list { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    .file-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--pipe-green);
+      border: 3px solid var(--shadow-color);
+      padding: 8px 14px;
+      font-size: 16px;
+      color: var(--text-light);
+      transition: all 0.2s ease;
+    }
+    .file-chip:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--shadow-color); }
+    .file-chip-remove {
+      background: var(--pixel-red);
+      border: none;
+      color: var(--text-light);
+      width: 22px; height: 22px;
+      cursor: pointer;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 8px;
+      transition: all 0.15s ease;
+    }
+    .file-chip-remove:hover { background: var(--pixel-red-light); transform: scale(1.1); }
+    .option-group { display: flex; gap: 12px; margin-bottom: 20px; }
+    .option-btn {
+      flex: 1;
+      padding: 14px 16px;
+      background: var(--bg-input);
+      border: var(--pixel-border-thin);
+      color: var(--text-muted);
+      font-family: 'Press Start 2P', cursive;
+      font-size: 9px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+      box-shadow: 3px 3px 0 var(--shadow-color);
+    }
+    .option-btn:hover { background: var(--bg-hover); color: var(--text-dark); transform: translate(-2px, -2px); box-shadow: 5px 5px 0 var(--shadow-color); }
+    .option-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--shadow-color); }
+    .option-btn.selected { background: var(--coin-gold); color: var(--shadow-color); }
+    .btn-group { display: flex; gap: 16px; margin-top: 24px; }
+    .btn {
+      flex: 1;
+      padding: 16px 24px;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 11px;
+      border: var(--pixel-border);
+      cursor: pointer;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.15s ease;
+    }
+    .btn:active { transform: translate(4px, 4px) !important; box-shadow: none !important; }
+    .btn-secondary { background: #A0A0A0; color: var(--shadow-color); box-shadow: 4px 4px 0 var(--shadow-color); }
+    .btn-secondary:hover { background: #B0B0B0; transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--shadow-color); }
+    .btn-primary { background: var(--pipe-green); color: var(--text-light); box-shadow: 4px 4px 0 var(--pipe-green-dark); }
+    .btn-primary:hover { background: #3DD87A; transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--pipe-green-dark); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn:disabled:hover { transform: none; }
+    .checkbox-group { display: flex; flex-direction: column; gap: 12px; }
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px;
+      background: var(--bg-input);
+      border: var(--pixel-border-thin);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 3px 3px 0 var(--shadow-color);
+    }
+    .checkbox-item:hover { background: var(--bg-hover); transform: translate(-2px, -2px); box-shadow: 5px 5px 0 var(--shadow-color); }
+    .checkbox-item.checked { background: var(--bg-hover); border-color: var(--pipe-green); }
+    .checkbox-box {
+      width: 28px; height: 28px;
+      border: 3px solid var(--border-color);
+      background: var(--bg-input);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 12px;
+      color: transparent;
+    }
+    .checkbox-item.checked .checkbox-box { background: var(--pipe-green); color: var(--text-light); }
+    .checkbox-label { font-family: 'Press Start 2P', cursive; font-size: 10px; color: var(--text-dark); margin-bottom: 4px; }
+    .checkbox-desc { font-size: 16px; color: var(--text-muted); }
+    .generation-panel { background: var(--bg-card); border: var(--pixel-border); box-shadow: 8px 8px 0 var(--shadow-color); overflow: hidden; }
+    .generation-header {
+      background: var(--pixel-red);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: var(--pixel-border);
+    }
+    .generation-title { font-family: 'Press Start 2P', cursive; font-size: 11px; color: var(--coin-gold); display: flex; align-items: center; gap: 10px; }
+    .generation-title-icon { animation: logoBlink 0.8s ease-in-out infinite; }
+    .generation-status { font-family: 'Press Start 2P', cursive; font-size: 8px; color: var(--text-light); }
+    .generation-log {
+      padding: 20px;
+      font-family: 'VT323', monospace;
+      font-size: 18px;
+      line-height: 2;
+      max-height: 350px;
+      overflow-y: auto;
+      background: var(--shadow-color);
+      color: var(--pipe-green);
+    }
+    .log-entry { display: flex; align-items: flex-start; gap: 12px; padding: 4px 0; animation: logAppear 0.3s ease-out; }
+    @keyframes logAppear { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+    .log-icon { font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+    .log-icon.processing { animation: processingBlink 0.5s ease-in-out infinite; }
+    @keyframes processingBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .log-text.completed { color: var(--pipe-green); }
+    .log-text.processing { color: var(--coin-gold); }
+    .log-text.error { color: var(--pixel-red); }
+    .progress-container { padding: 16px 20px; border-top: var(--pixel-border); background: var(--bg-card); }
+    .progress-label { font-family: 'Press Start 2P', cursive; font-size: 8px; color: var(--text-dark); margin-bottom: 10px; display: flex; justify-content: space-between; }
+    .progress-bar { display: flex; gap: 4px; background: var(--shadow-color); padding: 6px; border: var(--pixel-border-thin); }
+    .progress-segment { flex: 1; height: 20px; background: #333; transition: all 0.3s ease; }
+    .progress-segment.filled { background: var(--pipe-green); box-shadow: 0 0 8px var(--pipe-green); }
+    .progress-segment.active { background: var(--coin-gold); animation: segmentBlink 0.4s ease-in-out infinite; }
+    @keyframes segmentBlink { 0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--coin-gold); } 50% { opacity: 0.6; } }
+    .completion-card { text-align: center; padding: 40px 28px; }
+    .completion-icon { font-size: 64px; margin-bottom: 20px; animation: completionBounce 1s ease-in-out infinite; }
+    @keyframes completionBounce { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-10px) scale(1.1); } }
+    .completion-title { font-family: 'Press Start 2P', cursive; font-size: 16px; color: var(--pipe-green); margin-bottom: 12px; text-shadow: 2px 2px 0 var(--shadow-color); }
+    .completion-subtitle { font-size: 20px; color: var(--text-muted); margin-bottom: 28px; }
+    .eu-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--sky-blue);
+      border: 3px solid var(--shadow-color);
+      padding: 10px 16px;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 8px;
+      color: var(--shadow-color);
+      margin-bottom: 24px;
+    }
+    .analysis-summary { background: var(--bg-input); border: var(--pixel-border-thin); padding: 20px; margin-bottom: 24px; text-align: left; }
+    .analysis-title { font-family: 'Press Start 2P', cursive; font-size: 11px; color: var(--pixel-red); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .analysis-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; }
+    .analysis-card { background: var(--bg-card); border: 3px solid var(--border-color); padding: 14px; }
+    .analysis-card-header { font-family: 'Press Start 2P', cursive; font-size: 8px; color: var(--text-muted); margin-bottom: 10px; }
+    .analysis-stat { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+    .stat-value { font-family: 'Press Start 2P', cursive; font-size: 20px; color: var(--pixel-red); }
+    .stat-label { font-size: 14px; color: var(--text-muted); }
+    .match-percentage { margin-bottom: 10px; }
+    .match-value { font-family: 'Press Start 2P', cursive; font-size: 28px; color: var(--pipe-green); }
+    .match-label { font-size: 14px; color: var(--text-muted); margin-left: 8px; }
+    .skills-list { margin-bottom: 8px; }
+    .skills-label { font-family: 'Press Start 2P', cursive; font-size: 8px; display: block; margin-bottom: 4px; }
+    .skills-list.matched .skills-label { color: var(--pipe-green); }
+    .skills-list.gaps .skills-label { color: var(--coin-gold); }
+    .skills-tags { font-size: 15px; color: var(--text-muted); }
+    .strategy-section { background: var(--bg-card); border: 3px solid var(--border-color); padding: 14px; }
+    .strategy-header { font-family: 'Press Start 2P', cursive; font-size: 8px; color: var(--text-muted); margin-bottom: 10px; }
+    .strategy-approach { font-size: 16px; color: var(--text-dark); margin-bottom: 10px; line-height: 1.4; }
+    .download-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; }
+    .download-card {
+      background: var(--bg-input);
+      border: var(--pixel-border-thin);
+      padding: 20px;
+      text-align: center;
+      transition: all 0.2s ease;
+      box-shadow: 4px 4px 0 var(--shadow-color);
+    }
+    .download-card:hover { transform: translate(-3px, -3px); box-shadow: 7px 7px 0 var(--shadow-color); }
+    .download-card-icon { font-size: 36px; margin-bottom: 12px; }
+    .download-card-title { font-family: 'Press Start 2P', cursive; font-size: 10px; color: var(--text-dark); margin-bottom: 8px; }
+    .download-card-size { font-size: 14px; color: var(--text-muted); margin-bottom: 14px; word-break: break-all; }
+    .download-card-buttons { display: flex; gap: 8px; }
+    .btn-preview, .btn-download {
+      flex: 1;
+      padding: 10px 8px;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 7px;
+      border: 3px solid var(--border-color);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+    .btn-preview { background: var(--bg-card); color: var(--text-dark); box-shadow: 2px 2px 0 var(--shadow-color); }
+    .btn-preview:hover { background: var(--bg-hover); transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--shadow-color); }
+    .btn-download { background: var(--pipe-green); color: var(--text-light); box-shadow: 2px 2px 0 var(--pipe-green-dark); }
+    .btn-download:hover { background: #3DD87A; transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--pipe-green-dark); }
+    .preview-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 20px;
+    }
+    .preview-modal {
+      background: var(--bg-main);
+      border: var(--pixel-border);
+      box-shadow: 12px 12px 0 var(--shadow-color);
+      width: 100%;
+      max-width: 800px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .preview-header {
+      background: var(--pixel-red);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: var(--pixel-border);
+    }
+    .preview-title { font-family: 'Press Start 2P', cursive; font-size: 12px; color: var(--coin-gold); }
+    .preview-close {
+      background: var(--coin-gold);
+      border: 3px solid var(--shadow-color);
+      color: var(--shadow-color);
+      width: 32px; height: 32px;
+      cursor: pointer;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 10px;
+    }
+    .preview-close:hover { background: var(--text-light); transform: scale(1.1); }
+    .preview-content { flex: 1; overflow-y: auto; padding: 32px; background: white; color: #1a1a1a; }
+    .preview-footer { padding: 16px 20px; border-top: var(--pixel-border); display: flex; justify-content: flex-end; gap: 12px; background: var(--bg-card); }
+    .cv-preview { font-family: Georgia, serif; max-width: 700px; margin: 0 auto; }
+    .cv-header { text-align: center; margin-bottom: 24px; }
+    .cv-name { font-size: 24px; font-weight: bold; margin: 0 0 8px 0; text-transform: uppercase; }
+    .cv-contact { font-size: 12px; color: #555; margin: 0 0 8px 0; }
+    .cv-headline { font-size: 14px; font-weight: bold; text-transform: uppercase; margin: 0; }
+    .cv-section { margin-bottom: 20px; }
+    .cv-section-title { font-size: 14px; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 4px; margin-bottom: 12px; }
+    .cv-section p { font-size: 13px; line-height: 1.6; margin: 0 0 8px 0; }
+    .cv-experience { margin-bottom: 16px; }
+    .cv-exp-header { font-size: 13px; }
+    .cv-exp-meta { font-size: 12px; color: #555; font-style: italic; margin-bottom: 6px; }
+    .cv-exp-achievements { margin: 8px 0 0 0; padding-left: 20px; }
+    .cv-exp-achievements li { font-size: 13px; line-height: 1.5; margin-bottom: 4px; }
+    .letter-preview { font-family: Georgia, serif; max-width: 600px; margin: 0 auto; font-size: 14px; line-height: 1.8; }
+    .letter-preview p { margin-bottom: 16px; }
+    @media (max-width: 640px) {
+      .container { padding: 12px; }
+      header { padding: 16px; }
+      .logo-text { font-size: 14px; }
+      header::before, header::after { display: none; }
+      .step-dot { width: 36px; height: 36px; font-size: 10px; }
+      .step-line { width: 30px; }
+      .card { padding: 20px; }
+      .option-group, .btn-group { flex-direction: column; }
+      .download-cards, .analysis-grid { grid-template-columns: 1fr; }
+    }
+    ::-webkit-scrollbar { width: 12px; }
+    ::-webkit-scrollbar-track { background: var(--bg-card); border: 2px solid var(--border-color); }
+    ::-webkit-scrollbar-thumb { background: var(--pixel-red); border: 2px solid var(--border-color); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--pixel-red-light); }
+  </style>
+</head>
+<body>
+  <div class="pixel-decoration pixel-1">⭐</div>
+  <div class="pixel-decoration pixel-2">🍄</div>
+  <div class="pixel-decoration pixel-3">💎</div>
+  <div class="pixel-decoration pixel-4">🎮</div>
+  <div class="pixel-decoration pixel-5">🌟</div>
+  <div class="pixel-decoration pixel-6">🏆</div>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const Icons = {
+      Check: () => <span style={{ fontFamily: 'Press Start 2P', fontSize: '10px' }}>✓</span>,
+      ArrowLeft: () => <span>◀</span>,
+      ArrowRight: () => <span>▶</span>,
+      Zap: () => <span>⚡</span>,
+      Sparkles: () => <span>✨</span>,
+      Globe: () => <span>🌍</span>,
+      Download: () => <span>⬇️</span>,
+    };
+
+    function App() {
+      const [step, setStep] = useState(1);
+      const [linkedinUrl, setLinkedinUrl] = useState('');
+      const [cvFiles, setCvFiles] = useState([]);
+      const [jobMethod, setJobMethod] = useState('url');
+      const [jobDescription, setJobDescription] = useState('');
+      const [jobUrl, setJobUrl] = useState('');
+      const [generateCV, setGenerateCV] = useState(true);
+      const [generateCoverLetter, setGenerateCoverLetter] = useState(true);
+      const [isGenerating, setIsGenerating] = useState(false);
+      const [generationComplete, setGenerationComplete] = useState(false);
+      const [logs, setLogs] = useState([]);
+      const [progress, setProgress] = useState(0);
+      const [detectedRegion, setDetectedRegion] = useState(null);
+      const [sessionId, setSessionId] = useState(null);
+      const [generatedFiles, setGeneratedFiles] = useState(null);
+      const [analysisSummary, setAnalysisSummary] = useState(null);
+      const [previewType, setPreviewType] = useState(null);
+      const [previewContent, setPreviewContent] = useState(null);
+      const logRef = useRef(null);
+
+      const API_URL = 'http://localhost:3001';
+
+      useEffect(() => {
+        if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+      }, [logs]);
+
+      const startGeneration = async () => {
+        setIsGenerating(true);
+        setLogs([]);
+        setProgress(0);
+        setGeneratedFiles(null);
+        setAnalysisSummary(null);
+
+        try {
+          let profileData = {};
+          setLogs(prev => [...prev, { text: 'LOADING PROFILE DATA...', status: 'processing' }]);
+          
+          if (linkedinUrl) {
+            const profileRes = await fetch(API_URL + '/api/parse-linkedin', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ linkedinUrl })
+            });
+            profileData = (await profileRes.json()).profile || {};
+          }
+
+          setLogs(prev => prev.map((log, idx) => idx === prev.length - 1 ? { ...log, status: 'completed' } : log));
+          setProgress(10);
+
+          let cvTexts = [];
+          if (cvFiles.length > 0) {
+            setLogs(prev => [...prev, { text: 'PARSING ' + cvFiles.length + ' CV FILE(S)...', status: 'processing' }]);
+            const cvFormData = new FormData();
+            cvFiles.forEach(file => cvFormData.append('cvFiles', file));
+            const cvRes = await fetch(API_URL + '/api/parse-cvs', { method: 'POST', body: cvFormData });
+            cvTexts = (await cvRes.json()).cvs || [];
+            setLogs(prev => prev.map((log, idx) => idx === prev.length - 1 ? { ...log, status: 'completed' } : log));
+          }
+          setProgress(20);
+
+          setLogs(prev => [...prev, { text: 'ANALYZING JOB REQUIREMENTS...', status: 'processing' }]);
+          let jobData = {};
+          if (jobMethod === 'paste' && jobDescription) {
+            const jobRes = await fetch(API_URL + '/api/parse-job', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ jobDescription })
+            });
+            jobData = (await jobRes.json()).job || {};
+          } else if (jobUrl) {
+            const jobRes = await fetch(API_URL + '/api/parse-job', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ jobUrl })
+            });
+            jobData = (await jobRes.json()).job || {};
+          }
+
+          setLogs(prev => prev.map((log, idx) => idx === prev.length - 1 ? { ...log, status: 'completed' } : log));
+          setProgress(30);
+
+          setLogs(prev => [...prev, { text: 'STARTING GENERATION...', status: 'processing' }]);
+
+          const response = await fetch(API_URL + '/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profile: profileData, cvTexts, jobData, options: { generateCV, generateCoverLetter } })
+          });
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.type === 'progress') {
+                    setLogs(prev => {
+                      const updated = prev.map(log => log.status === 'processing' ? { ...log, status: 'completed' } : log);
+                      return [...updated, { text: data.message.toUpperCase(), status: 'processing' }];
+                    });
+                    if (data.message.includes('Detected:')) {
+                      const regionMatch = data.message.match(/Detected: (EU|UK|US)/);
+                      if (regionMatch) setDetectedRegion(regionMatch[1]);
+                    }
+                    setProgress(prev => Math.min(prev + 3, 95));
+                  } else if (data.type === 'complete') {
+                    setSessionId(data.sessionId);
+                    setGeneratedFiles(data.files);
+                    setAnalysisSummary(data.analysisSummary);
+                    if (data.stats && data.stats.region) setDetectedRegion(data.stats.region);
+                    setProgress(100);
+                    setLogs(prev => prev.map(log => ({ ...log, status: 'completed' })));
+                  } else if (data.type === 'error') {
+                    throw new Error(data.message);
+                  }
+                } catch (e) { console.error('Parse error:', e); }
+              }
+            }
+          }
+          setIsGenerating(false);
+          setGenerationComplete(true);
+        } catch (error) {
+          console.error('Generation error:', error);
+          setLogs(prev => [...prev, { text: 'ERROR: ' + error.message, status: 'error' }]);
+          setIsGenerating(false);
+          setProgress(0);
+        }
+      };
+
+      const downloadFile = (docType) => {
+        if (!sessionId) { alert('No documents available.'); return; }
+        window.open(API_URL + '/api/download/' + sessionId + '/' + docType, '_blank');
+      };
+
+      const openPreview = async (docType) => {
+        if (!sessionId) return;
+        try {
+          const response = await fetch(API_URL + '/api/preview/' + sessionId + '/' + docType);
+          const data = await response.json();
+          if (data.success) { setPreviewType(docType); setPreviewContent(data.content); }
+        } catch (error) { console.error('Preview error:', error); }
+      };
+
+      const closePreview = () => { setPreviewType(null); setPreviewContent(null); };
+
+      const resetApp = () => {
+        setStep(1); setLinkedinUrl(''); setCvFiles([]); setJobDescription(''); setJobUrl('');
+        setIsGenerating(false); setGenerationComplete(false); setLogs([]); setProgress(0);
+        setDetectedRegion(null); setSessionId(null); setGeneratedFiles(null); setAnalysisSummary(null);
+        setPreviewType(null); setPreviewContent(null);
+      };
+
+      const canProceedStep1 = linkedinUrl && cvFiles.length > 0;
+      const canProceedStep2 = (jobMethod === 'paste' && jobDescription) || (jobMethod === 'url' && jobUrl);
+      const canGenerate = generateCV || generateCoverLetter;
+      const totalSegments = 10;
+      const filledSegments = Math.floor((progress / 100) * totalSegments);
+
+      return (
+        <div className="container">
+          <header>
+            <div className="logo">
+              <span className="logo-icon">⚡</span>
+              <span className="logo-text">FLASHJOBS</span>
+              <span className="logo-version">2.0</span>
+            </div>
+            <p className="tagline">{">>>"} LEVEL UP YOUR CAREER {"<<<"}</p>
+          </header>
+
+          {!isGenerating && !generationComplete && (
+            <nav className="steps-nav">
+              <div className="step-indicator">
+                <div className={"step-dot " + (step >= 1 ? "active " : "") + (step > 1 ? "completed" : "")}>{step > 1 ? "✓" : "1"}</div>
+                <div className={"step-line " + (step > 1 ? "completed" : "")}></div>
+              </div>
+              <div className="step-indicator">
+                <div className={"step-dot " + (step >= 2 ? "active " : "") + (step > 2 ? "completed" : "")}>{step > 2 ? "✓" : "2"}</div>
+                <div className={"step-line " + (step > 2 ? "completed" : "")}></div>
+              </div>
+              <div className="step-indicator">
+                <div className={"step-dot " + (step >= 3 ? "active" : "")}>3</div>
+              </div>
+            </nav>
+          )}
+
+          {step === 1 && !isGenerating && !generationComplete && (
+            <div className="card">
+              <h2 className="card-title"><span className="card-title-icon">👤</span> YOUR PROFILE</h2>
+              <p className="card-description">Enter your LinkedIn URL and upload your CV(s) to begin your quest!</p>
+              <div className="form-group">
+                <label className="form-label">LINKEDIN PROFILE URL <span className="required">*</span></label>
+                <input type="url" className="form-input" placeholder="https://linkedin.com/in/yourprofile" value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">EXISTING CV(S) <span className="required">*</span></label>
+                <p style={{ fontSize: '16px', color: 'var(--text-muted)', marginBottom: '12px' }}>Upload your CV(s) for better context and accuracy.</p>
+                {cvFiles.length > 0 && (
+                  <div className="files-list">
+                    {cvFiles.map((file, idx) => (
+                      <div key={idx} className="file-chip">
+                        <span>📄</span>
+                        <span>{file.name}</span>
+                        <button className="file-chip-remove" onClick={() => setCvFiles(prev => prev.filter((_, i) => i !== idx))}>X</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <label className="file-upload">
+                  <input type="file" accept=".docx" multiple onChange={(e) => { const newFiles = Array.from(e.target.files); setCvFiles(prev => [...prev, ...newFiles]); e.target.value = ''; }} />
+                  <div className="file-upload-icon">📁</div>
+                  <p className="file-upload-text"><span>CLICK TO UPLOAD</span> or drag and drop<br />Word documents (.docx) only</p>
+                </label>
+              </div>
+              <div className="btn-group">
+                <button className="btn btn-primary" disabled={!canProceedStep1} onClick={() => setStep(2)}>NEXT <Icons.ArrowRight /></button>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && !isGenerating && !generationComplete && (
+            <div className="card">
+              <h2 className="card-title"><span className="card-title-icon">💼</span> TARGET JOB</h2>
+              <p className="card-description">Tell us about the job you are applying for!</p>
+              <label className="form-label">JOB DESCRIPTION <span className="required">*</span></label>
+              <div className="option-group">
+                <button className={"option-btn " + (jobMethod === 'paste' ? "selected" : "")} onClick={() => setJobMethod('paste')}>PASTE TEXT</button>
+                <button className={"option-btn " + (jobMethod === 'url' ? "selected" : "")} onClick={() => setJobMethod('url')}>ENTER URL</button>
+              </div>
+              {jobMethod === 'paste' && <div className="form-group"><textarea className="form-input" placeholder="Paste the full job description here..." value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} /></div>}
+              {jobMethod === 'url' && <div className="form-group"><input type="url" className="form-input" placeholder="https://linkedin.com/jobs/view/123456" value={jobUrl} onChange={(e) => setJobUrl(e.target.value)} /></div>}
+              <div className="btn-group">
+                <button className="btn btn-secondary" onClick={() => setStep(1)}><Icons.ArrowLeft /> BACK</button>
+                <button className="btn btn-primary" disabled={!canProceedStep2} onClick={() => setStep(3)}>NEXT <Icons.ArrowRight /></button>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && !isGenerating && !generationComplete && (
+            <div className="card">
+              <h2 className="card-title"><span className="card-title-icon">✨</span> GENERATE DOCUMENTS</h2>
+              <p className="card-description">Select what you want to create!</p>
+              <label className="form-label">SELECT OUTPUT</label>
+              <div className="checkbox-group">
+                <div className={"checkbox-item " + (generateCV ? "checked" : "")} onClick={() => setGenerateCV(!generateCV)}>
+                  <div className="checkbox-box">{generateCV ? "✓" : ""}</div>
+                  <div><div className="checkbox-label">TAILORED CV</div><div className="checkbox-desc">AI-optimized resume</div></div>
+                </div>
+                <div className={"checkbox-item " + (generateCoverLetter ? "checked" : "")} onClick={() => setGenerateCoverLetter(!generateCoverLetter)}>
+                  <div className="checkbox-box">{generateCoverLetter ? "✓" : ""}</div>
+                  <div><div className="checkbox-label">COVER LETTER</div><div className="checkbox-desc">Personalized letter</div></div>
+                </div>
+              </div>
+              <div className="btn-group">
+                <button className="btn btn-secondary" onClick={() => setStep(2)}><Icons.ArrowLeft /> BACK</button>
+                <button className="btn btn-primary" disabled={!canGenerate} onClick={startGeneration}><Icons.Zap /> START!</button>
+              </div>
+            </div>
+          )}
+
+          {isGenerating && (
+            <div className="generation-panel">
+              <div className="generation-header">
+                <div className="generation-title"><span className="generation-title-icon">⚡</span> GENERATING...</div>
+                <div className="generation-status">{progress}%</div>
+              </div>
+              <div className="generation-log" ref={logRef}>
+                {logs.map((log, idx) => (
+                  <div key={idx} className="log-entry">
+                    <span className={"log-icon " + log.status}>{log.status === 'completed' ? '✓' : log.status === 'error' ? '✗' : '▶'}</span>
+                    <span className={"log-text " + log.status}>{log.text}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="progress-container">
+                <div className="progress-label"><span>PROGRESS</span><span>{progress}%</span></div>
+                <div className="progress-bar">
+                  {Array.from({length: totalSegments}).map((_, idx) => (
+                    <div key={idx} className={"progress-segment " + (idx < filledSegments ? "filled" : idx === filledSegments ? "active" : "")} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {generationComplete && (
+            <div className="card completion-card">
+              <div className="completion-icon">🏆</div>
+              <h2 className="completion-title">QUEST COMPLETE!</h2>
+              <p className="completion-subtitle">Your documents are ready!</p>
+              {detectedRegion === 'EU' && <div className="eu-badge"><Icons.Globe /> EU MODE - COMPLIANCE ADDED</div>}
+              {analysisSummary && (
+                <div className="analysis-summary">
+                  <h3 className="analysis-title"><Icons.Sparkles /> HOW WE TAILORED YOUR CV</h3>
+                  <div className="analysis-grid">
+                    <div className="analysis-card">
+                      <div className="analysis-card-header">📋 YOUR PROFILE</div>
+                      <div className="analysis-stat"><span className="stat-value">{(analysisSummary.profileAnalysis && analysisSummary.profileAnalysis.yearsExperience) || '5'}+</span><span className="stat-label">Years</span></div>
+                      <div className="analysis-stat"><span className="stat-value">{(analysisSummary.profileAnalysis && analysisSummary.profileAnalysis.rolesFound) || 0}</span><span className="stat-label">Roles</span></div>
+                    </div>
+                    <div className="analysis-card">
+                      <div className="analysis-card-header">🎯 MATCH</div>
+                      <div className="match-percentage"><span className="match-value">{(analysisSummary.gapAnalysis && analysisSummary.gapAnalysis.matchPercentage) || 0}%</span></div>
+                      {analysisSummary.gapAnalysis && analysisSummary.gapAnalysis.matchedSkills && analysisSummary.gapAnalysis.matchedSkills.length > 0 && <div className="skills-list matched"><span className="skills-label">✓ MATCHED:</span><span className="skills-tags">{analysisSummary.gapAnalysis.matchedSkills.slice(0, 3).join(', ')}</span></div>}
+                    </div>
+                  </div>
+                  <div className="strategy-section">
+                    <div className="strategy-header">💡 STRATEGY</div>
+                    <p className="strategy-approach">{analysisSummary.strategy && analysisSummary.strategy.approach}</p>
+                  </div>
+                </div>
+              )}
+              <div className="download-cards">
+                {generatedFiles && generatedFiles.cv && (
+                  <div className="download-card">
+                    <div className="download-card-icon">📄</div>
+                    <div className="download-card-title">CV</div>
+                    <div className="download-card-size">{generatedFiles.cv.filename}</div>
+                    <div className="download-card-buttons">
+                      <button className="btn-preview" onClick={() => openPreview('cv')}>👁️ VIEW</button>
+                      <button className="btn-download" onClick={() => downloadFile('cv')}>⬇️ GET</button>
+                    </div>
+                  </div>
+                )}
+                {generatedFiles && generatedFiles.coverLetter && (
+                  <div className="download-card">
+                    <div className="download-card-icon">📝</div>
+                    <div className="download-card-title">LETTER</div>
+                    <div className="download-card-size">{generatedFiles.coverLetter.filename}</div>
+                    <div className="download-card-buttons">
+                      <button className="btn-preview" onClick={() => openPreview('coverLetter')}>👁️ VIEW</button>
+                      <button className="btn-download" onClick={() => downloadFile('coverLetter')}>⬇️ GET</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <button className="btn btn-secondary" onClick={resetApp} style={{ width: '100%' }}><Icons.ArrowLeft /> NEW QUEST</button>
+            </div>
+          )}
+
+          {previewType && previewContent && (
+            <div className="preview-overlay" onClick={closePreview}>
+              <div className="preview-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="preview-header">
+                  <h3 className="preview-title">{previewType === 'cv' ? '📄 CV PREVIEW' : '📝 LETTER PREVIEW'}</h3>
+                  <button className="preview-close" onClick={closePreview}>X</button>
+                </div>
+                <div className="preview-content">
+                  {previewType === 'cv' ? (
+                    <div className="cv-preview">
+                      <div className="cv-header">
+                        <h1 className="cv-name">{previewContent.name}</h1>
+                        <p className="cv-contact">{[previewContent.contact && previewContent.contact.location, previewContent.contact && previewContent.contact.email, previewContent.contact && previewContent.contact.phone].filter(Boolean).join(' • ')}</p>
+                        {previewContent.headline && <p className="cv-headline">{previewContent.headline}</p>}
+                      </div>
+                      {previewContent.summary && <div className="cv-section"><h2 className="cv-section-title">Summary</h2><p>{previewContent.summary}</p></div>}
+                      {previewContent.experience && previewContent.experience.length > 0 && (
+                        <div className="cv-section">
+                          <h2 className="cv-section-title">Experience</h2>
+                          {previewContent.experience.map((exp, idx) => (
+                            <div key={idx} className="cv-experience">
+                              <div className="cv-exp-header"><strong>{exp.title}</strong> | {exp.company}</div>
+                              <div className="cv-exp-meta">{exp.location} | {exp.dates}</div>
+                              <ul className="cv-exp-achievements">{exp.achievements && exp.achievements.map((ach, i) => <li key={i}>{ach}</li>)}</ul>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {previewContent.education && previewContent.education.length > 0 && <div className="cv-section"><h2 className="cv-section-title">Education</h2>{previewContent.education.map((edu, idx) => <p key={idx}>{edu.degree} | {edu.institution} {edu.year && ('| ' + edu.year)}</p>)}</div>}
+                    </div>
+                  ) : (
+                    <div className="letter-preview">
+                      <p>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                      <p>Dear {previewContent.recipientName || 'Hiring Manager'},</p>
+                      <p>{previewContent.opening}</p>
+                      {previewContent.body && previewContent.body.map((para, idx) => <p key={idx}>{para}</p>)}
+                      <p>{previewContent.closing}</p>
+                      <p>Best regards,<br/>{previewContent.candidateName || 'Candidate'}</p>
+                    </div>
+                  )}
+                </div>
+                <div className="preview-footer">
+                  <button className="btn btn-secondary" onClick={closePreview}>CLOSE</button>
+                  <button className="btn btn-primary" onClick={() => downloadFile(previewType)}><Icons.Download /> DOWNLOAD</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

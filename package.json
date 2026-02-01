@@ -1,0 +1,30 @@
+{
+  "name": "flashjobs",
+  "version": "2.0.0",
+  "description": "FlashJobs 2.0 - Human-quality CV tailoring for international careers",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js"
+  },
+  "keywords": [
+    "cv",
+    "resume",
+    "job-search",
+    "ai",
+    "tailoring"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
+    "cheerio": "^1.2.0",
+    "cors": "^2.8.6",
+    "docx": "^9.5.1",
+    "express": "^5.2.1",
+    "mammoth": "^1.11.0",
+    "multer": "^2.0.2",
+    "pdf-parse": "^2.4.5",
+    "uuid": "^13.0.0"
+  }
+}
