@@ -18,13 +18,19 @@
   "license": "ISC",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
+    "@railway/cli": "^4.27.5",
     "cheerio": "^1.2.0",
+    "cookie-parser": "^1.4.6",
     "cors": "^2.8.6",
     "docx": "^9.5.1",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.2",
     "mammoth": "^1.11.0",
     "multer": "^2.0.2",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
     "pdf-parse": "^2.4.5",
+    "pg": "^8.11.3",
     "uuid": "^13.0.0"
   }
 }

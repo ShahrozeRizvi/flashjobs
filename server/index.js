@@ -7,7 +7,9 @@ const { v4: uuidv4 } = require('uuid');
 const mammoth = require('mammoth');
 const cheerio = require('cheerio');
 const Anthropic = require('@anthropic-ai/sdk');
+const cookieParser = require('cookie-parser');
 const { generateCV, generateCoverLetter } = require('./documentGenerator');
+const { passport, generateToken, pool, authenticateToken, optionalAuth } = require('./auth');
 
 // PDF parsing - handle different module formats
 let pdfParse;
@@ -28,8 +30,15 @@ const anthropic = new Anthropic({
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? 'https://flashjobs-production.up.railway.app' 
+    : 'http://localhost:3001',
+  credentials: true
+}));
 app.use(express.json({ limit: '10mb' }));
+app.use(cookieParser());
+app.use(passport.initialize());
 app.use(express.static(path.join(__dirname, '../public')));
 
 // File upload configuration
@@ -52,7 +61,270 @@ const upload = multer({
 const generatedDocs = new Map();
 
 // ============================================================================
-// API ENDPOINTS
+// AUTHENTICATION ENDPOINTS
+// ============================================================================
+
+/**
+ * Initiate Google OAuth flow
+ */
+app.get('/api/auth/google',
+  passport.authenticate('google', { 
+    scope: ['profile', 'email'],
+    session: false 
+  })
+);
+
+/**
+ * Google OAuth callback
+ */
+app.get('/api/auth/google/callback',
+  passport.authenticate('google', { 
+    session: false,
+    failureRedirect: '/?auth=failed'
+  }),
+  (req, res) => {
+    try {
+      const token = generateToken(req.user);
+      res.cookie('token', token, { 
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      });
+      console.log('✅ User authenticated:', req.user.email);
+      res.redirect('/?auth=success');
+    } catch (error) {
+      console.error('Auth callback error:', error);
+      res.redirect('/?auth=error');
+    }
+  }
+);
+
+/**
+ * Logout
+ */
+app.post('/api/auth/logout', (req, res) => {
+  res.clearCookie('token');
+  res.json({ success: true });
+});
+
+/**
+ * Get current user info
+ */
+app.get('/api/auth/me', authenticateToken, async (req, res) => {
+  try {
+    const userResult = await pool.query(
+      'SELECT id, email, name, profile_picture, created_at, last_login FROM users WHERE id = $1',
+      [req.userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get user profile
+    const profileResult = await pool.query(
+      `SELECT linkedin_url, master_cv_filename, uploaded_at, updated_at 
+       FROM user_profiles WHERE user_id = $1`,
+      [req.userId]
+    );
+
+    // Get application count
+    const countResult = await pool.query(
+      'SELECT COUNT(*) as count FROM job_applications WHERE user_id = $1',
+      [req.userId]
+    );
+
+    res.json({ 
+      user: userResult.rows[0],
+      profile: profileResult.rows[0] || null,
+      stats: {
+        applicationsGenerated: parseInt(countResult.rows[0].count)
+      }
+    });
+  } catch (err) {
+    console.error('Get user error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================================
+// PROFILE MANAGEMENT ENDPOINTS
+// ============================================================================
+
+/**
+ * Get user profile
+ */
+app.get('/api/profile', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT linkedin_url, linkedin_profile_data, master_cv_text, 
+              master_cv_filename, uploaded_at, updated_at 
+       FROM user_profiles WHERE user_id = $1`,
+      [req.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ profile: null });
+    }
+
+    res.json({ profile: result.rows[0] });
+  } catch (err) {
+    console.error('Get profile error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Update LinkedIn URL
+ */
+app.put('/api/profile/linkedin', authenticateToken, async (req, res) => {
+  try {
+    const { linkedinUrl } = req.body;
+
+    await pool.query(
+      `UPDATE user_profiles 
+       SET linkedin_url = $1, updated_at = NOW() 
+       WHERE user_id = $2`,
+      [linkedinUrl, req.userId]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Update LinkedIn error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Update master CV
+ */
+app.post('/api/profile/cv', authenticateToken, upload.single('cvFile'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Extract text from CV
+    const result = await mammoth.extractRawText({ buffer: req.file.buffer });
+    const cvText = result.value;
+
+    await pool.query(
+      `UPDATE user_profiles 
+       SET master_cv_text = $1, master_cv_filename = $2, updated_at = NOW() 
+       WHERE user_id = $3`,
+      [cvText, req.file.originalname, req.userId]
+    );
+
+    console.log(`✅ Updated master CV for user ${req.userId}: ${req.file.originalname}`);
+    res.json({ success: true, filename: req.file.originalname });
+  } catch (err) {
+    console.error('Update CV error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Save LinkedIn profile data (after parsing)
+ */
+app.post('/api/profile/linkedin-data', authenticateToken, async (req, res) => {
+  try {
+    const { profileData } = req.body;
+
+    await pool.query(
+      `UPDATE user_profiles 
+       SET linkedin_profile_data = $1, updated_at = NOW() 
+       WHERE user_id = $2`,
+      [JSON.stringify(profileData), req.userId]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Save LinkedIn data error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================================
+// JOB APPLICATION HISTORY ENDPOINTS
+// ============================================================================
+
+/**
+ * Get user's application history
+ */
+app.get('/api/applications', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT a.id, a.job_url, a.job_title, a.company_name, a.generated_at,
+              d.cv_filename, d.cover_letter_filename, d.id as doc_id
+       FROM job_applications a
+       LEFT JOIN generated_documents d ON d.application_id = a.id
+       WHERE a.user_id = $1
+       ORDER BY a.generated_at DESC
+       LIMIT 50`,
+      [req.userId]
+    );
+
+    res.json({ applications: result.rows });
+  } catch (err) {
+    console.error('Get applications error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Get specific application
+ */
+app.get('/api/applications/:id', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT a.*, d.cv_content, d.cover_letter_content
+       FROM job_applications a
+       LEFT JOIN generated_documents d ON d.application_id = a.id
+       WHERE a.id = $1 AND a.user_id = $2`,
+      [req.params.id, req.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    res.json({ application: result.rows[0] });
+  } catch (err) {
+    console.error('Get application error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Delete application
+ */
+app.delete('/api/applications/:id', authenticateToken, async (req, res) => {
+  try {
+    // Check ownership
+    const check = await pool.query(
+      'SELECT id FROM job_applications WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.userId]
+    );
+
+    if (check.rows.length === 0) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    await pool.query(
+      'DELETE FROM job_applications WHERE id = $1',
+      [req.params.id]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete application error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================================
+// EXISTING API ENDPOINTS (UPDATED WITH AUTH)
 // ============================================================================
 
 /**
@@ -155,7 +427,7 @@ app.post('/api/parse-job', async (req, res) => {
  * Generate CV and Cover Letter
  * Main generation endpoint with streaming progress
  */
-app.post('/api/generate', async (req, res) => {
+app.post('/api/generate', optionalAuth, async (req, res) => {
   // Set up SSE for streaming progress
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -166,8 +438,37 @@ app.post('/api/generate', async (req, res) => {
   };
 
   try {
-    const { profile, cvTexts, jobData, options } = req.body;
+    let { profile, cvTexts, jobData, options } = req.body;
     const sessionId = uuidv4();
+
+    // If user is logged in, check for saved profile
+    if (req.userId) {
+      sendProgress('Loading your saved profile...');
+      const savedProfile = await pool.query(
+        `SELECT linkedin_url, linkedin_profile_data, master_cv_text, master_cv_filename 
+         FROM user_profiles WHERE user_id = $1`,
+        [req.userId]
+      );
+
+      if (savedProfile.rows.length > 0) {
+        const userProfile = savedProfile.rows[0];
+        
+        // Use saved LinkedIn data if not provided
+        if (!profile && userProfile.linkedin_profile_data) {
+          profile = userProfile.linkedin_profile_data;
+          sendProgress('✓ Using saved LinkedIn profile');
+        }
+        
+        // Use saved CV if not provided
+        if ((!cvTexts || cvTexts.length === 0) && userProfile.master_cv_text) {
+          cvTexts = [{
+            filename: userProfile.master_cv_filename || 'Master CV',
+            text: userProfile.master_cv_text
+          }];
+          sendProgress('✓ Using saved master CV');
+        }
+      }
+    }
 
     sendProgress('Initializing FlashJobs 2.0 engine...');
     await sleep(500);
@@ -243,6 +544,47 @@ app.post('/api/generate', async (req, res) => {
       coverLetter: coverLetterBuffer ? { buffer: coverLetterBuffer, filename: coverLetterFilename, content: coverLetterContent } : null,
       createdAt: Date.now()
     });
+
+    // If user is logged in, save to database
+    if (req.userId) {
+      try {
+        // Save job application
+        const appResult = await pool.query(
+          `INSERT INTO job_applications (user_id, job_url, job_title, company_name, job_description, job_data) 
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+          [
+            req.userId,
+            jobData.url || null,
+            jobData.title || 'Unknown Position',
+            jobData.company || 'Unknown Company',
+            jobData.rawText ? jobData.rawText.substring(0, 5000) : null,
+            JSON.stringify(jobData)
+          ]
+        );
+
+        const applicationId = appResult.rows[0].id;
+
+        // Save generated documents
+        await pool.query(
+          `INSERT INTO generated_documents 
+           (application_id, user_id, cv_content, cv_filename, cover_letter_content, cover_letter_filename) 
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            applicationId,
+            req.userId,
+            JSON.stringify(cvContent),
+            cvFilename,
+            coverLetterContent ? JSON.stringify(coverLetterContent) : null,
+            coverLetterFilename
+          ]
+        );
+
+        console.log(`✅ Saved application ${applicationId} for user ${req.userId}`);
+      } catch (dbError) {
+        console.error('Database save error (non-fatal):', dbError);
+        // Don't fail the generation if DB save fails
+      }
+    }
 
     // Clean up old documents (older than 1 hour)
     cleanupOldDocuments();
