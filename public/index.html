@@ -12,6 +12,17 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    /* Mobile tap highlight */
+    * {
+      -webkit-tap-highlight-color: rgba(230, 57, 70, 0.3);
+      -webkit-touch-callout: none;
+    }
+    
+    button, a, .clickable {
+      -webkit-tap-highlight-color: rgba(230, 57, 70, 0.4);
+    }
+    
     :root {
       --pixel-red: #E63946;
       --pixel-red-dark: #B82D38;
@@ -432,15 +443,136 @@
     .letter-preview { font-family: Georgia, serif; max-width: 600px; margin: 0 auto; font-size: 14px; line-height: 1.8; }
     .letter-preview p { margin-bottom: 16px; }
     @media (max-width: 640px) {
+      /* Layout & Spacing */
       .container { padding: 12px; }
       header { padding: 16px; }
-      .logo-text { font-size: 14px; }
-      header::before, header::after { display: none; }
-      .step-dot { width: 36px; height: 36px; font-size: 10px; }
-      .step-line { width: 30px; }
       .card { padding: 20px; }
-      .option-group, .btn-group { flex-direction: column; }
-      .download-cards, .analysis-grid { grid-template-columns: 1fr; }
+      
+      /* Typography */
+      .logo-text { font-size: 14px; }
+      .card-title { font-size: 16px; }
+      .card-description { font-size: 16px; }
+      
+      /* Header decorations */
+      header::before, header::after { display: none; }
+      
+      /* Step indicators - smaller but still visible */
+      .step-dot { width: 36px; height: 36px; font-size: 10px; }
+      .step-line { width: 24px; height: 4px; }
+      
+      /* Buttons - increase touch target to 48px minimum */
+      .btn { 
+        padding: 16px 20px; 
+        font-size: 14px;
+        min-height: 48px;
+      }
+      .option-group, .btn-group { 
+        flex-direction: column; 
+        gap: 12px;
+      }
+      .btn-group .btn { width: 100%; }
+      
+      /* File upload - more compact on mobile */
+      .file-upload {
+        padding: 24px 16px;
+        min-height: 140px;
+      }
+      .file-upload-icon { font-size: 36px; margin-bottom: 8px; }
+      .file-upload-text { font-size: 15px; }
+      
+      /* Input fields */
+      .form-input { 
+        padding: 14px 14px;
+        font-size: 16px; /* Prevents iOS zoom on focus */
+      }
+      textarea.form-input { min-height: 140px; }
+      
+      /* Download cards - single column, larger touch areas */
+      .download-cards { 
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      .download-card { padding: 20px; }
+      .download-card-buttons {
+        flex-direction: column;
+        gap: 10px;
+      }
+      .download-card-buttons button {
+        min-height: 44px;
+        padding: 12px 16px;
+      }
+      
+      /* Analysis grid */
+      .analysis-grid { 
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      
+      /* Preview modal - full screen on mobile */
+      .preview-overlay { 
+        padding: 0;
+        align-items: stretch;
+      }
+      .preview-modal {
+        max-width: 100%;
+        height: 100vh;
+        border: none;
+        box-shadow: none;
+      }
+      .preview-content { 
+        padding: 20px 16px;
+      }
+      .preview-header {
+        padding: 14px 16px;
+      }
+      .preview-title { font-size: 10px; }
+      .preview-close {
+        width: 36px;
+        height: 36px;
+        font-size: 11px;
+      }
+      .preview-footer {
+        padding: 12px 16px;
+        flex-direction: column-reverse;
+      }
+      .preview-footer .btn {
+        width: 100%;
+        min-height: 48px;
+      }
+      
+      /* CV/Letter preview text */
+      .cv-preview, .letter-preview {
+        font-size: 14px;
+      }
+      .cv-name { font-size: 20px; }
+      .cv-section-title { font-size: 13px; }
+      .cv-exp-header { font-size: 13px; }
+      
+      /* Generation panel */
+      .generation-panel {
+        padding: 16px;
+      }
+      .generation-log {
+        max-height: 250px;
+        padding: 12px;
+      }
+      .log-entry { gap: 8px; }
+      
+      /* Radio buttons - larger touch area */
+      .option-radio {
+        width: 24px;
+        height: 24px;
+      }
+      .option-radio::before {
+        width: 24px;
+        height: 24px;
+      }
+      .option-radio::after {
+        width: 14px;
+        height: 14px;
+        top: 5px;
+        left: 5px;
+      }
     }
     ::-webkit-scrollbar { width: 12px; }
     ::-webkit-scrollbar-track { background: var(--bg-card); border: 2px solid var(--border-color); }
@@ -688,7 +820,7 @@
                   </div>
                 )}
                 <label className="file-upload">
-                  <input type="file" accept=".docx" multiple onChange={(e) => { const newFiles = Array.from(e.target.files); setCvFiles(prev => [...prev, ...newFiles]); e.target.value = ''; }} />
+                  <input type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple onChange={(e) => { const newFiles = Array.from(e.target.files); setCvFiles(prev => [...prev, ...newFiles]); e.target.value = ''; }} />
                   <div className="file-upload-icon">📁</div>
                   <p className="file-upload-text"><span>CLICK TO UPLOAD</span> or drag and drop<br />Word documents (.docx) only</p>
                 </label>
