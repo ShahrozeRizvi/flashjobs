@@ -805,6 +805,25 @@
         checkAuth();
       }, []);
 
+      // Load application history when visiting history page
+      useEffect(() => {
+        if (currentPage === 'history' && user) {
+          loadApplications();
+        }
+      }, [currentPage, user]);
+
+      const loadApplications = async () => {
+        try {
+          const res = await fetch(API_URL + '/api/applications', { credentials: 'include' });
+          if (res.ok) {
+            const data = await res.json();
+            setApplications(data.applications || []);
+          }
+        } catch (err) {
+          console.error('Failed to load applications:', err);
+        }
+      };
+
       const checkAuth = async () => {
         try {
           const res = await fetch(API_URL + '/api/auth/me', { credentials: 'include' });
@@ -1019,23 +1038,116 @@
             )}
           </header>
 
-          {!isGenerating && !generationComplete && (
-            <nav className="steps-nav">
-              <div className="step-indicator">
-                <div className={"step-dot " + (step >= 1 ? "active " : "") + (step > 1 ? "completed" : "")}>{step > 1 ? "✓" : "1"}</div>
-                <div className={"step-line " + (step > 1 ? "completed" : "")}></div>
+          {/* Profile Page */}
+          {currentPage === 'profile' && user && (
+            <div>
+              <div className="profile-card">
+                <h2 className="profile-section-title">👤 MY PROFILE</h2>
+                <div className="profile-info-row">
+                  <span className="profile-label">Name:</span>
+                  <span className="profile-value">{user.name}</span>
+                </div>
+                <div className="profile-info-row">
+                  <span className="profile-label">Email:</span>
+                  <span className="profile-value">{user.email}</span>
+                </div>
+                <div className="profile-info-row">
+                  <span className="profile-label">Member Since:</span>
+                  <span className="profile-value">{new Date(user.created_at).toLocaleDateString()}</span>
+                </div>
               </div>
-              <div className="step-indicator">
-                <div className={"step-dot " + (step >= 2 ? "active " : "") + (step > 2 ? "completed" : "")}>{step > 2 ? "✓" : "2"}</div>
-                <div className={"step-line " + (step > 2 ? "completed" : "")}></div>
+
+              <div className="profile-card">
+                <h2 className="profile-section-title">🔗 SAVED DATA</h2>
+                <div className="profile-info-row">
+                  <span className="profile-label">LinkedIn URL:</span>
+                  <span className="profile-value">{userProfile?.linkedin_url || 'Not set'}</span>
+                </div>
+                <div className="profile-info-row">
+                  <span className="profile-label">Master CV:</span>
+                  <span className="profile-value">{userProfile?.master_cv_filename || 'Not uploaded'}</span>
+                </div>
+                {userProfile?.updated_at && (
+                  <div className="profile-info-row">
+                    <span className="profile-label">Last Updated:</span>
+                    <span className="profile-value">{new Date(userProfile.updated_at).toLocaleDateString()}</span>
+                  </div>
+                )}
               </div>
-              <div className="step-indicator">
-                <div className={"step-dot " + (step >= 3 ? "active" : "")}>3</div>
+
+              <div className="card">
+                <h2 className="card-title">💡 HOW IT WORKS</h2>
+                <p style={{ marginBottom: '12px' }}>When you use FlashJobs, your LinkedIn URL and uploaded CVs are automatically saved to your profile.</p>
+                <p style={{ marginBottom: '12px' }}>Next time you generate a CV, just paste the job URL — we'll use your saved profile data automatically!</p>
+                <button className="btn btn-primary" onClick={() => setCurrentPage('home')}>START GENERATING →</button>
               </div>
-            </nav>
+            </div>
           )}
 
-          {step === 1 && !isGenerating && !generationComplete && (
+          {/* History Page */}
+          {currentPage === 'history' && user && (
+            <div>
+              <div className="card">
+                <h2 className="card-title">📋 APPLICATION HISTORY</h2>
+                <p className="card-description">Your past CV generations</p>
+              </div>
+
+              {applications.length === 0 ? (
+                <div className="card">
+                  <p style={{ textAlign: 'center', color: 'var(--text-muted)', margin: '40px 0' }}>
+                    No applications yet. <a href="#" onClick={(e) => { e.preventDefault(); setCurrentPage('home'); }}>Generate your first CV</a>!
+                  </p>
+                </div>
+              ) : (
+                applications.map((app) => (
+                  <div key={app.id} className="history-item">
+                    <div className="history-item-header">
+                      <div>
+                        <div className="history-item-title">{app.job_title}</div>
+                        <div className="history-item-company">{app.company_name}</div>
+                      </div>
+                      <div className="history-item-date">{new Date(app.generated_at).toLocaleDateString()}</div>
+                    </div>
+                    <div className="history-item-actions">
+                      {app.cv_filename && (
+                        <button className="btn btn-secondary" onClick={() => window.open(`/api/applications/${app.id}/download/cv`, '_blank')}>
+                          📄 CV
+                        </button>
+                      )}
+                      {app.cover_letter_filename && (
+                        <button className="btn btn-secondary" onClick={() => window.open(`/api/applications/${app.id}/download/letter`, '_blank')}>
+                          📝 LETTER
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Home Page (CV Generation) */}
+          {currentPage === 'home' && (
+            <>
+              {!isGenerating && !generationComplete && (
+                <nav className="steps-nav">
+                  <div className="step-indicator">
+                    <div className={"step-dot " + (step >= 1 ? "active " : "") + (step > 1 ? "completed" : "")}>{step > 1 ? "✓" : "1"}</div>
+                    <div className={"step-line " + (step > 1 ? "completed" : "")}></div>
+                  </div>
+                  <div className="step-indicator">
+                    <div className={"step-dot " + (step >= 2 ? "active " : "") + (step > 2 ? "completed" : "")}>{step > 2 ? "✓" : "2"}</div>
+                    <div className={"step-line " + (step > 2 ? "completed" : "")}></div>
+                  </div>
+                  <div className="step-indicator">
+                    <div className={"step-dot " + (step >= 3 ? "active" : "")}>3</div>
+                  </div>
+                </nav>
+              )}
+            </>
+          )}
+
+          {currentPage === 'home' && !isGenerating && !generationComplete && (
             <div className="card">
               <h2 className="card-title"><span className="card-title-icon">👤</span> YOUR PROFILE</h2>
               <p className="card-description">Enter your LinkedIn URL and upload your CV(s) to begin your quest!</p>
@@ -1069,7 +1181,7 @@
             </div>
           )}
 
-          {step === 2 && !isGenerating && !generationComplete && (
+          {currentPage === 'home' && step === 2 && !isGenerating && !generationComplete && (
             <div className="card">
               <h2 className="card-title"><span className="card-title-icon">💼</span> TARGET JOB</h2>
               <p className="card-description">Tell us about the job you are applying for!</p>
@@ -1087,7 +1199,7 @@
             </div>
           )}
 
-          {step === 3 && !isGenerating && !generationComplete && (
+          {currentPage === 'home' && step === 3 && !isGenerating && !generationComplete && (
             <div className="card">
               <h2 className="card-title"><span className="card-title-icon">✨</span> GENERATE DOCUMENTS</h2>
               <p className="card-description">Select what you want to create!</p>
@@ -1109,7 +1221,7 @@
             </div>
           )}
 
-          {isGenerating && (
+          {currentPage === 'home' && isGenerating && (
             <div className="generation-panel">
               <div className="generation-header">
                 <div className="generation-title"><span className="generation-title-icon">⚡</span> GENERATING...</div>
@@ -1134,7 +1246,7 @@
             </div>
           )}
 
-          {generationComplete && (
+          {currentPage === 'home' && generationComplete && (
             <div className="card completion-card">
               <div className="completion-icon">🏆</div>
               <h2 className="completion-title">QUEST COMPLETE!</h2>
