@@ -118,6 +118,175 @@
       border: 2px solid var(--shadow-color);
     }
     .tagline { font-size: 16px; color: var(--text-light); margin-top: 10px; letter-spacing: 2px; }
+    
+    /* User Menu */
+    .header-actions {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .btn-signin {
+      background: var(--coin-gold);
+      color: var(--shadow-color);
+      border: 3px solid var(--shadow-color);
+      padding: 8px 16px;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 10px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-signin:hover {
+      background: var(--coin-gold-dark);
+      transform: translate(-2px, -2px);
+      box-shadow: 4px 4px 0 var(--shadow-color);
+    }
+    .user-menu {
+      position: relative;
+    }
+    .user-button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-card);
+      border: 3px solid var(--shadow-color);
+      padding: 6px 12px;
+      cursor: pointer;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 10px;
+    }
+    .user-button:hover {
+      background: var(--bg-hover);
+    }
+    .user-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid var(--shadow-color);
+    }
+    .user-dropdown {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 8px;
+      background: var(--bg-card);
+      border: var(--pixel-border);
+      box-shadow: 6px 6px 0 var(--shadow-color);
+      min-width: 200px;
+      z-index: 1000;
+    }
+    .user-dropdown-item {
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 2px solid var(--border-color);
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .user-dropdown-item:last-child {
+      border-bottom: none;
+    }
+    .user-dropdown-item:hover {
+      background: var(--bg-hover);
+    }
+    
+    /* Page Navigation */
+    .page-nav {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      justify-content: center;
+    }
+    .page-nav-btn {
+      background: var(--bg-card);
+      border: var(--pixel-border);
+      padding: 12px 20px;
+      cursor: pointer;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 10px;
+      transition: all 0.2s;
+    }
+    .page-nav-btn:hover {
+      background: var(--bg-hover);
+      transform: translate(-2px, -2px);
+      box-shadow: 4px 4px 0 var(--shadow-color);
+    }
+    .page-nav-btn.active {
+      background: var(--pixel-red);
+      color: var(--coin-gold);
+    }
+    
+    /* Profile Page */
+    .profile-card {
+      background: var(--bg-card);
+      border: var(--pixel-border);
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 6px 6px 0 var(--shadow-color);
+    }
+    .profile-section-title {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 12px;
+      margin-bottom: 16px;
+      color: var(--pixel-red);
+    }
+    .profile-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 2px solid var(--border-color);
+    }
+    .profile-info-row:last-child {
+      border-bottom: none;
+    }
+    .profile-label {
+      font-weight: bold;
+      color: var(--text-muted);
+    }
+    .profile-value {
+      color: var(--text-dark);
+      word-break: break-all;
+    }
+    
+    /* History Page */
+    .history-item {
+      background: var(--bg-card);
+      border: var(--pixel-border);
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 4px 4px 0 var(--shadow-color);
+    }
+    .history-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .history-item-title {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 11px;
+      color: var(--pixel-red);
+      margin-bottom: 4px;
+    }
+    .history-item-company {
+      font-size: 16px;
+      color: var(--text-muted);
+    }
+    .history-item-date {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .history-item-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    
     .steps-nav { display: flex; justify-content: center; align-items: center; margin-bottom: 24px; }
     .step-indicator { display: flex; align-items: center; }
     .step-dot {
@@ -603,6 +772,10 @@
     };
 
     function App() {
+      const [user, setUser] = useState(null);
+      const [userLoading, setUserLoading] = useState(true);
+      const [showUserMenu, setShowUserMenu] = useState(false);
+      const [currentPage, setCurrentPage] = useState('home'); // 'home', 'profile', 'history'
       const [step, setStep] = useState(1);
       const [linkedinUrl, setLinkedinUrl] = useState('');
       const [cvFiles, setCvFiles] = useState([]);
@@ -621,9 +794,42 @@
       const [analysisSummary, setAnalysisSummary] = useState(null);
       const [previewType, setPreviewType] = useState(null);
       const [previewContent, setPreviewContent] = useState(null);
+      const [userProfile, setUserProfile] = useState(null);
+      const [applications, setApplications] = useState([]);
       const logRef = useRef(null);
 
       const API_URL = '';
+
+      // Check if user is logged in on mount
+      useEffect(() => {
+        checkAuth();
+      }, []);
+
+      const checkAuth = async () => {
+        try {
+          const res = await fetch(API_URL + '/api/auth/me', { credentials: 'include' });
+          if (res.ok) {
+            const data = await res.json();
+            setUser(data.user);
+            setUserProfile(data.profile);
+            // Pre-fill LinkedIn and CV if user has saved profile
+            if (data.profile?.linkedin_url) {
+              setLinkedinUrl(data.profile.linkedin_url);
+            }
+          }
+        } catch (err) {
+          console.log('Not logged in');
+        } finally {
+          setUserLoading(false);
+        }
+      };
+
+      const handleLogout = async () => {
+        await fetch(API_URL + '/api/auth/logout', { method: 'POST', credentials: 'include' });
+        setUser(null);
+        setUserProfile(null);
+        setCurrentPage('home');
+      };
 
       useEffect(() => {
         if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
@@ -779,6 +985,38 @@
               <span className="logo-version">2.0</span>
             </div>
             <p className="tagline">{">>>"} LEVEL UP YOUR CAREER {"<<<"}</p>
+            
+            {!userLoading && (
+              <div className="header-actions">
+                {user ? (
+                  <div className="user-menu">
+                    <button className="user-button" onClick={() => setShowUserMenu(!showUserMenu)}>
+                      {user.profile_picture && <img src={user.profile_picture} alt={user.name} className="user-avatar" />}
+                      <span>{user.name?.split(' ')[0] || 'USER'}</span>
+                      <span>{showUserMenu ? '▲' : '▼'}</span>
+                    </button>
+                    {showUserMenu && (
+                      <div className="user-dropdown">
+                        <div className="user-dropdown-item" onClick={() => { setCurrentPage('profile'); setShowUserMenu(false); }}>
+                          👤 MY PROFILE
+                        </div>
+                        <div className="user-dropdown-item" onClick={() => { setCurrentPage('history'); setShowUserMenu(false); }}>
+                          📋 HISTORY
+                        </div>
+                        <div className="user-dropdown-item" onClick={() => { setCurrentPage('home'); setShowUserMenu(false); }}>
+                          🏠 HOME
+                        </div>
+                        <div className="user-dropdown-item" onClick={handleLogout}>
+                          🚪 LOGOUT
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <a href="/api/auth/google" className="btn-signin">SIGN IN</a>
+                )}
+              </div>
+            )}
           </header>
 
           {!isGenerating && !generationComplete && (
