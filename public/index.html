@@ -1027,7 +1027,7 @@
         setPreviewType(null); setPreviewContent(null);
       };
 
-      const canProceedStep1 = linkedinUrl && cvFiles.length > 0;
+      const canProceedStep1 = linkedinUrl && (cvFiles.length > 0 || (user && userProfile?.master_cv_filename));
       const canProceedStep2 = (jobMethod === 'paste' && jobDescription) || (jobMethod === 'url' && jobUrl);
       const canGenerate = generateCV || generateCoverLetter;
       const totalSegments = 10;
@@ -1209,8 +1209,33 @@
                 <input type="url" className="form-input" placeholder="https://linkedin.com/in/yourprofile" value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">EXISTING CV(S) <span className="required">*</span></label>
-                <p style={{ fontSize: '16px', color: 'var(--text-muted)', marginBottom: '12px' }}>Upload your CV(s) for better context and accuracy.</p>
+                <label className="form-label">
+                  EXISTING CV(S) {(!user || !userProfile?.master_cv_filename) && <span className="required">*</span>}
+                </label>
+                
+                {user && userProfile?.master_cv_filename && (
+                  <div style={{ 
+                    background: 'var(--sky-blue)', 
+                    color: 'var(--text-dark)', 
+                    padding: '12px 16px', 
+                    marginBottom: '12px',
+                    border: '3px solid var(--border-color)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '14px'
+                  }}>
+                    <span>✓</span>
+                    <span><strong>Saved CV:</strong> {userProfile.master_cv_filename}</span>
+                  </div>
+                )}
+                
+                <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                  {user && userProfile?.master_cv_filename 
+                    ? 'We\'ll use your saved CV above. Want to use different one(s)? Upload below (optional):' 
+                    : 'Upload your CV(s) for better context and accuracy.'}
+                </p>
+                
                 {cvFiles.length > 0 && (
                   <div className="files-list">
                     {cvFiles.map((file, idx) => (

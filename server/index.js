@@ -1388,17 +1388,82 @@ function sleep(ms) {
 }
 
 // ============================================================================
+// WHATSAPP BOT ENDPOINTS
+// ============================================================================
+
+const { processMessage } = require('./whatsappBot');
+
+/**
+ * Webhook for incoming WhatsApp messages from Twilio
+ */
+app.post('/api/whatsapp/webhook', async (req, res) => {
+  try {
+    const { From, Body, NumMedia, MediaUrl0 } = req.body;
+    
+    // Remove 'whatsapp:' prefix from phone number
+    const phoneNumber = From.replace('whatsapp:', '');
+    
+    console.log(`📱 WhatsApp message from ${phoneNumber}: ${Body}`);
+    
+    // Process message asynchronously
+    processMessage(phoneNumber, Body || '', parseInt(NumMedia) || 0, MediaUrl0).catch(err => {
+      console.error('WhatsApp processing error:', err);
+    });
+    
+    // Respond to Twilio immediately (required)
+    res.status(200).send('OK');
+  } catch (error) {
+    console.error('WhatsApp webhook error:', error);
+    res.status(500).send('Error');
+  }
+});
+
+/**
+ * Status callback for WhatsApp message delivery
+ */
+app.post('/api/whatsapp/status', (req, res) => {
+  const { MessageStatus, MessageSid } = req.body;
+  console.log(`📤 Message ${MessageSid} status: ${MessageStatus}`);
+  res.status(200).send('OK');
+});
+
+// ============================================================================
 // START SERVER
 // ============================================================================
 
-app.listen(PORT, () => {
-  console.log(`FlashJobs 2.0 server running on http://localhost:${PORT}`);
-  console.log(`API endpoints:`);
-  console.log(`  POST /api/parse-linkedin - Parse LinkedIn profile`);
-  console.log(`  POST /api/parse-cvs - Parse CV files`);
-  console.log(`  POST /api/parse-job - Parse job description`);
-  console.log(`  POST /api/generate - Generate CV & Cover Letter`);
-  console.log(`  GET /api/download/:sessionId/:docType - Download documents`);
+const { initializeDatabase } = require('./initDb');
+
+// Initialize database schema if needed, then start server
+initializeDatabase().then(() => {
+  app.listen(PORT, () => {
+    console.log(`
+╔════════════════════════════════════════════════════════╗
+║   ⚡ FLASHJOBS 2.0 SERVER RUNNING                     ║
+║   Port: ${PORT}                                        ║
+╚════════════════════════════════════════════════════════╝
+    `);
+    console.log('📡 API Endpoints:');
+    console.log('  AUTH:');
+    console.log('    GET  /api/auth/google - Sign in with Google');
+    console.log('    POST /api/auth/logout - Logout');
+    console.log('    GET  /api/auth/me - Get current user');
+    console.log('  PROFILE:');
+    console.log('    GET  /api/profile - Get saved profile');
+    console.log('    PUT  /api/profile/linkedin - Update LinkedIn URL');
+    console.log('    POST /api/profile/cv - Upload master CV');
+    console.log('  HISTORY:');
+    console.log('    GET  /api/applications - List past applications');
+    console.log('  GENERATION:');
+    console.log('    POST /api/parse-linkedin - Parse LinkedIn profile');
+    console.log('    POST /api/parse-cvs - Parse CV files');
+    console.log('    POST /api/parse-job - Parse job description');
+    console.log('    POST /api/generate - Generate CV & Cover Letter');
+    console.log('    GET  /api/download/:sessionId/:docType - Download documents');
+    console.log('');
+  });
+}).catch(err => {
+  console.error('Failed to initialize database:', err);
+  process.exit(1);
 });
 
 module.exports = app;
