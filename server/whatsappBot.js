@@ -2,11 +2,21 @@ const twilio = require('twilio');
 const FormData = require('form-data');
 const axios = require('axios');
 
-// Twilio client
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+// Lazy-load Twilio client (don't initialize at module load)
+let twilioClient = null;
+
+function getTwilioClient() {
+  if (!twilioClient) {
+    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
+      throw new Error('Twilio credentials not configured. Check TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN environment variables.');
+    }
+    twilioClient = twilio(
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_AUTH_TOKEN
+    );
+  }
+  return twilioClient;
+}
 
 // In-memory conversation state (in production, use Redis or database)
 const conversationStates = new Map();
@@ -63,7 +73,8 @@ function isValidUrl(text) {
  */
 async function sendWhatsAppMessage(to, message) {
   try {
-    await twilioClient.messages.create({
+    const client = getTwilioClient();
+    await client.messages.create({
       from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
       to: `whatsapp:${to}`,
       body: message
@@ -79,7 +90,8 @@ async function sendWhatsAppMessage(to, message) {
  */
 async function sendWhatsAppDocument(to, documentUrl, caption) {
   try {
-    await twilioClient.messages.create({
+    const client = getTwilioClient();
+    await client.messages.create({
       from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
       to: `whatsapp:${to}`,
       mediaUrl: [documentUrl],
