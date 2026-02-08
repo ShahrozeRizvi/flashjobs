@@ -37,6 +37,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true })); // For Twilio webhooks
 app.use(cookieParser());
 app.use(passport.initialize());
 app.use(express.static(path.join(__dirname, '../public')));
@@ -1398,7 +1399,17 @@ const { processMessage } = require('./whatsappBot');
  */
 app.post('/api/whatsapp/webhook', async (req, res) => {
   try {
-    const { From, Body, NumMedia, MediaUrl0 } = req.body;
+    console.log('📱 WhatsApp webhook received:', JSON.stringify(req.body));
+    
+    const From = req.body.From || req.body.from;
+    const Body = req.body.Body || req.body.body || '';
+    const NumMedia = req.body.NumMedia || req.body.numMedia || 0;
+    const MediaUrl0 = req.body.MediaUrl0 || req.body.mediaUrl0;
+    
+    if (!From) {
+      console.error('❌ No From field in request body');
+      return res.status(400).send('Missing From field');
+    }
     
     // Remove 'whatsapp:' prefix from phone number
     const phoneNumber = From.replace('whatsapp:', '');
@@ -1406,7 +1417,7 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
     console.log(`📱 WhatsApp message from ${phoneNumber}: ${Body}`);
     
     // Process message asynchronously
-    processMessage(phoneNumber, Body || '', parseInt(NumMedia) || 0, MediaUrl0).catch(err => {
+    processMessage(phoneNumber, Body, parseInt(NumMedia) || 0, MediaUrl0).catch(err => {
       console.error('WhatsApp processing error:', err);
     });
     
