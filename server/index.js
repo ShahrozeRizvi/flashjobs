@@ -428,6 +428,95 @@ app.post('/api/parse-job', async (req, res) => {
  * Generate CV and Cover Letter
  * Main generation endpoint with streaming progress
  */
+// ============================================================================
+// GENERATION ENDPOINTS
+// ============================================================================
+
+/**
+ * Simple non-streaming generation endpoint for WhatsApp bot
+ * Returns JSON instead of SSE
+ */
+app.post('/api/generate-simple', async (req, res) => {
+  try {
+    const { profile, cvTexts, jobData, options } = req.body;
+    const sessionId = uuidv4();
+
+    console.log('📱 WhatsApp generation request received');
+
+    // Detect region for compliance
+    const region = detectRegion(jobData);
+
+    // Generate CV with Claude
+    const cvResult = await generateCVWithClaude(
+      anthropic,
+      profile,
+      cvTexts,
+      jobData,
+      region,
+      (msg) => console.log('Progress:', msg) // Log progress to console
+    );
+
+    const { cvContent, analysisSummary, extractedData } = cvResult;
+
+    // Generate Cover Letter if requested
+    let coverLetterContent = null;
+    if (options?.generateCoverLetter !== false) {
+      coverLetterContent = await generateCoverLetterWithClaude(
+        anthropic,
+        cvContent,
+        extractedData,
+        jobData,
+        profile,
+        region
+      );
+    }
+
+    // Generate .docx files
+    const cvBuffer = await generateCV(cvContent, jobData, region);
+    const safeName = (profile?.name || 'Candidate').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+    const safeJobTitle = (jobData?.title || 'Position').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
+    const cvFilename = `CV_${safeName}_${safeJobTitle}.docx`;
+
+    let coverLetterBuffer = null;
+    let coverLetterFilename = null;
+    if (coverLetterContent) {
+      coverLetterBuffer = await generateCoverLetter(coverLetterContent, cvContent, jobData, region);
+      coverLetterFilename = `CoverLetter_${safeName}_${safeJobTitle}.docx`;
+    }
+
+    // Store documents for download
+    generatedDocs.set(sessionId, {
+      cv: { buffer: cvBuffer, filename: cvFilename, content: cvContent },
+      coverLetter: coverLetterBuffer ? { buffer: coverLetterBuffer, filename: coverLetterFilename, content: coverLetterContent } : null,
+      createdAt: Date.now()
+    });
+
+    console.log('✅ WhatsApp generation complete:', sessionId);
+
+    // Return JSON response
+    res.json({
+      success: true,
+      sessionId,
+      files: {
+        cv: { filename: cvFilename, size: Math.round(cvBuffer.length / 1024) },
+        coverLetter: coverLetterBuffer ? { filename: coverLetterFilename, size: Math.round(coverLetterBuffer.length / 1024) } : null
+      },
+      jobData: {
+        title: jobData?.title || 'Position',
+        company: jobData?.company || 'Company'
+      },
+      analysisSummary
+    });
+
+  } catch (error) {
+    console.error('Simple generation error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
 app.post('/api/generate', optionalAuth, async (req, res) => {
   // Set up SSE for streaming progress
   res.setHeader('Content-Type', 'text/event-stream');

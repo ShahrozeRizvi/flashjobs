@@ -314,30 +314,30 @@ async function generateCV(phoneNumber, jobUrl, linkedinUrl, cvMediaUrl) {
     });
     const jobData = jobResponse.data.job;
 
-    // Generate CV (no streaming for WhatsApp)
-    const generateResponse = await axios.post(`${API_BASE}/api/generate`, {
+    // Generate CV using simple endpoint (non-streaming)
+    const generateResponse = await axios.post(`${API_BASE}/api/generate-simple`, {
       profile: profileData,
       cvTexts,
       jobData,
       options: { generateCV: true, generateCoverLetter: false }
     });
 
-    // Wait for generation to complete
-    // Note: This is simplified - in production, parse SSE stream properly
-    
-    // For now, send success message
-    // In production, you'd get sessionId and download the actual file
-    await sendWhatsAppMessage(phoneNumber,
-      `✅ *Done! Here's your tailored CV:*\n\n` +
-      `Job: ${jobData.title || 'Position'}\n` +
-      `Company: ${jobData.company || 'Company'}\n\n` +
-      `💡 *Your profile is saved!* Next time just send the job URL - that's it!\n\n` +
-      `Type "help" for commands.`
-    );
+    const result = generateResponse.data;
 
-    // Update state to READY
-    const state = getState(phoneNumber);
-    updateState(phoneNumber, {
+    if (result.success) {
+      // Send success message with job details
+      await sendWhatsAppMessage(phoneNumber,
+        `✅ *Done! Your tailored CV is ready!*\n\n` +
+        `📄 *Job:* ${result.jobData.title}\n` +
+        `🏢 *Company:* ${result.jobData.company}\n\n` +
+        `💡 *Your profile is saved!* Next time just send the job URL - that's it!\n\n` +
+        `Download your CV at: https://flashjobs-production.up.railway.app/api/download/${result.sessionId}/cv\n\n` +
+        `Type "help" for commands.`
+      );
+
+      // Update state to READY
+      const state = getState(phoneNumber);
+      updateState(phoneNumber, {
       state: STATES.READY,
       data: {
         ...state.data,
