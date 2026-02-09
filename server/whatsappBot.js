@@ -285,11 +285,16 @@ async function processMessage(from, body, numMedia, mediaUrl) {
  */
 async function generateCV(phoneNumber, jobUrl, linkedinUrl, cvMediaUrl) {
   try {
+    // Use localhost in development, same server in production
+    const API_BASE = process.env.NODE_ENV === 'production' 
+      ? 'http://localhost:3001'  // Railway runs everything on same container
+      : 'http://localhost:3001';
+
     // Download CV from Twilio
     const cvBuffer = await downloadTwilioMedia(cvMediaUrl);
 
     // Parse LinkedIn profile
-    const linkedinResponse = await axios.post('http://localhost:3001/api/parse-linkedin', {
+    const linkedinResponse = await axios.post(`${API_BASE}/api/parse-linkedin`, {
       linkedinUrl
     });
     const profileData = linkedinResponse.data.profile;
@@ -298,19 +303,19 @@ async function generateCV(phoneNumber, jobUrl, linkedinUrl, cvMediaUrl) {
     const cvFormData = new FormData();
     cvFormData.append('cvFiles', cvBuffer, 'cv.docx');
     
-    const cvResponse = await axios.post('http://localhost:3001/api/parse-cvs', cvFormData, {
+    const cvResponse = await axios.post(`${API_BASE}/api/parse-cvs`, cvFormData, {
       headers: cvFormData.getHeaders()
     });
     const cvTexts = cvResponse.data.cvs;
 
     // Parse job
-    const jobResponse = await axios.post('http://localhost:3001/api/parse-job', {
+    const jobResponse = await axios.post(`${API_BASE}/api/parse-job`, {
       jobUrl
     });
     const jobData = jobResponse.data.job;
 
     // Generate CV (no streaming for WhatsApp)
-    const generateResponse = await axios.post('http://localhost:3001/api/generate', {
+    const generateResponse = await axios.post(`${API_BASE}/api/generate`, {
       profile: profileData,
       cvTexts,
       jobData,
