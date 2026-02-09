@@ -338,12 +338,15 @@ async function generateCV(phoneNumber, jobUrl, linkedinUrl, cvMediaUrl) {
       // Update state to READY
       const state = getState(phoneNumber);
       updateState(phoneNumber, {
-      state: STATES.READY,
-      data: {
-        ...state.data,
-        profileSaved: true
-      }
-    });
+        state: STATES.READY,
+        data: {
+          ...state.data,
+          profileSaved: true
+        }
+      });
+    } else {
+      throw new Error(result.error || 'Generation failed');
+    }
 
   } catch (error) {
     console.error('CV generation error:', error);
