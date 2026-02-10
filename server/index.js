@@ -473,7 +473,9 @@ app.post('/api/generate-simple', async (req, res) => {
 
     // Generate .docx files
     const cvBuffer = await generateCV(cvContent, jobData, region);
-    const safeName = (profile?.name || 'Candidate').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+    // Use name extracted by Claude from CV, fallback to profile or Candidate
+    const candidateName = extractedData?.name || profile?.name || 'Candidate';
+    const safeName = candidateName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
     const safeJobTitle = (jobData?.title || 'Position').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
     const cvFilename = `CV_${safeName}_${safeJobTitle}.docx`;
 
@@ -930,11 +932,46 @@ async function scrapeJobUrl(url) {
                 $('title').text().trim() ||
                 'Job Position';
 
-    return {
+    // Try to extract company name (LinkedIn specific selectors)
+    let company = '';
+    const companySelectors = [
+      '.topcard__org-name-link',
+      '.topcard__flavor',
+      '.job-details-jobs-unified-top-card__company-name',
+      '[data-test-job-details-company]',
+      'a.sub-nav-cta__optional-url',  // LinkedIn company link
+      '.company-name'
+    ];
+
+    for (const selector of companySelectors) {
+      const element = $(selector);
+      if (element.length && element.text().trim()) {
+        company = element.text().trim();
+        console.log('✓ Extracted company:', company);
+        break;
+      }
+    }
+
+    // Fallback: try to parse from page text
+    if (!company) {
+      const pageText = $('body').text();
+      const companyMatch = pageText.match(/(?:at|@)\s+([A-Z][a-zA-Z\s&]+?)(?:\s+·|\s+\||in |,)/);
+      if (companyMatch) {
+        company = companyMatch[1].trim();
+        console.log('✓ Extracted company from text:', company);
+      }
+    }
+
+    const result = {
       ...parseJobDescription(jobText),
       title: title.slice(0, 200),
+      company: company || 'Company',
       sourceUrl: url
     };
+
+    console.log('📊 Scraped job:', { title: result.title, company: result.company });
+
+    return result;
   } catch (error) {
     console.error('Job scraping error:', error);
     throw new Error(`Could not scrape job URL: ${error.message}. Please paste the job description directly.`);
