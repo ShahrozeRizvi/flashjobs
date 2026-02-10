@@ -1311,7 +1311,7 @@ Return a JSON object:
   "nationality": ${extractedData.nationality ? `"${extractedData.nationality}"` : 'null'},
   "visaStatus": ${extractedData.visaStatus ? `"${extractedData.visaStatus}"` : 'null'},
   "headline": "Tailored headline based on their ACTUAL current title and experience",
-  "summary": "3-4 sentence summary using ONLY their real experience, tailored to the job",
+  "summary": "Brief, impactful 2-3 sentence professional summary (maximum 3-4 lines) using ONLY their real experience, tailored to the job. Keep it concise and punchy.",
   "coreCompetencies": [
     { "category": "Category", "skills": ["ONLY skills from verified data that are relevant"] }
   ],
@@ -1327,7 +1327,7 @@ Return a JSON object:
   ],
   "education": ${JSON.stringify(extractedData.education || [])},
   "certifications": ${JSON.stringify(extractedData.certifications || [])},
-  "languages": ${JSON.stringify(extractedData.languages || [])}
+  "languages": ${(extractedData.languages && extractedData.languages.length > 0) ? JSON.stringify(extractedData.languages) : '[]'}
 }`
     }],
     system: `You are a professional CV writer. Your ONLY job is to tailor and rephrase the candidate's EXISTING experience to better match the target job. 

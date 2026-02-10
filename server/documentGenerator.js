@@ -320,11 +320,16 @@ async function generateCV(cvContent, profile, region) {
   // -------------------------------------------------------------------------
   // LANGUAGES
   // -------------------------------------------------------------------------
-  if (languages.length > 0) {
+  // Filter out any languages with undefined/null values
+  const validLanguages = (languages || []).filter(l => 
+    l && l.language && l.language !== 'undefined' && l.level && l.level !== 'undefined'
+  );
+  
+  if (validLanguages.length > 0) {
     
     children.push(createSectionHeading('LANGUAGES'));
 
-    const langText = languages.map(l => `${l.language} (${l.level})`).join(', ');
+    const langText = validLanguages.map(l => `${l.language} (${l.level})`).join(', ');
     children.push(
       new Paragraph({
         spacing: { after: STYLES.spacing.paragraph, line: STYLES.spacing.line },
