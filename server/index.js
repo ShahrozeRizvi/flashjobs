@@ -1077,9 +1077,16 @@ async function generateCVWithClaude(anthropic, profile, cvTexts, jobData, region
   const linkedinContent = profile?.rawText || '';
   const userProvidedData = `${linkedinContent}\n\n${allCvContent}`;
   
-  if (!userProvidedData.trim() || userProvidedData.length < 100) {
+  // For WhatsApp users, LinkedIn scraping often fails, so CV content alone is sufficient
+  const hasEnoughCvData = allCvContent.trim() && allCvContent.length >= 100;
+  const hasEnoughLinkedInData = linkedinContent.trim() && linkedinContent.length >= 100;
+  
+  if (!hasEnoughCvData && !hasEnoughLinkedInData) {
+    console.error('Insufficient data:', { cvLength: allCvContent.length, linkedinLength: linkedinContent.length });
     throw new Error('Insufficient profile data. Please upload your CV or LinkedIn PDF.');
   }
+  
+  console.log('✓ Profile data validated:', { cvLength: allCvContent.length, linkedinLength: linkedinContent.length });
 
   // Step 2: First Claude call - Extract facts ONLY (no generation yet)
   onProgress('→ Identifying your real experience, skills, and achievements...');
