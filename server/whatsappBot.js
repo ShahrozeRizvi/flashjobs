@@ -285,8 +285,9 @@ async function processMessage(from, body, numMedia, mediaUrl) {
  */
 async function generateCV(phoneNumber, jobUrl, linkedinUrl, cvMediaUrl) {
   try {
-    // Use localhost - everything runs in same container
-    const API_BASE = 'http://127.0.0.1:3001';
+    // Use same port as the running server
+    const PORT = process.env.PORT || 3001;
+    const API_BASE = `http://127.0.0.1:${PORT}`;
     const axiosConfig = {
       timeout: 120000, // 2 minute timeout
       headers: {
@@ -295,6 +296,7 @@ async function generateCV(phoneNumber, jobUrl, linkedinUrl, cvMediaUrl) {
     };
 
     console.log('📱 Starting CV generation for', phoneNumber);
+    console.log('🔧 Using API base:', API_BASE);
 
     // Download CV from Twilio
     console.log('📥 Downloading CV from Twilio...');
