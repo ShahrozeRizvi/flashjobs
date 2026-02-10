@@ -285,44 +285,63 @@ async function processMessage(from, body, numMedia, mediaUrl) {
  */
 async function generateCV(phoneNumber, jobUrl, linkedinUrl, cvMediaUrl) {
   try {
-    // Use localhost in development, same server in production
-    const API_BASE = process.env.NODE_ENV === 'production' 
-      ? 'http://localhost:3001'  // Railway runs everything on same container
-      : 'http://localhost:3001';
+    // Use localhost - everything runs in same container
+    const API_BASE = 'http://127.0.0.1:3001';
+    const axiosConfig = {
+      timeout: 120000, // 2 minute timeout
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    };
+
+    console.log('📱 Starting CV generation for', phoneNumber);
 
     // Download CV from Twilio
+    console.log('📥 Downloading CV from Twilio...');
     const cvBuffer = await downloadTwilioMedia(cvMediaUrl);
+    console.log('✓ CV downloaded, size:', cvBuffer.length);
 
     // Parse LinkedIn profile
+    console.log('🔍 Parsing LinkedIn profile...');
     const linkedinResponse = await axios.post(`${API_BASE}/api/parse-linkedin`, {
       linkedinUrl
-    });
+    }, axiosConfig);
     const profileData = linkedinResponse.data.profile;
+    console.log('✓ LinkedIn parsed');
 
     // Parse CV
+    console.log('📄 Parsing CV file...');
     const cvFormData = new FormData();
     cvFormData.append('cvFiles', cvBuffer, 'cv.docx');
     
     const cvResponse = await axios.post(`${API_BASE}/api/parse-cvs`, cvFormData, {
-      headers: cvFormData.getHeaders()
+      headers: cvFormData.getHeaders(),
+      timeout: 60000
     });
     const cvTexts = cvResponse.data.cvs;
+    console.log('✓ CV parsed');
 
     // Parse job
+    console.log('🎯 Parsing job posting...');
     const jobResponse = await axios.post(`${API_BASE}/api/parse-job`, {
       jobUrl
-    });
+    }, axiosConfig);
     const jobData = jobResponse.data.job;
+    console.log('✓ Job parsed:', jobData.title);
 
     // Generate CV using simple endpoint (non-streaming)
+    console.log('⚡ Generating tailored CV...');
     const generateResponse = await axios.post(`${API_BASE}/api/generate-simple`, {
       profile: profileData,
       cvTexts,
       jobData,
       options: { generateCV: true, generateCoverLetter: false }
+    }, {
+      timeout: 180000 // 3 minutes for generation
     });
 
     const result = generateResponse.data;
+    console.log('✓ Generation complete');
 
     if (result.success) {
       // Send success message with job details
@@ -341,7 +360,8 @@ async function generateCV(phoneNumber, jobUrl, linkedinUrl, cvMediaUrl) {
         state: STATES.READY,
         data: {
           ...state.data,
-          profileSaved: true
+          profileSaved: true,
+          sessionId: result.sessionId
         }
       });
     } else {
@@ -349,8 +369,18 @@ async function generateCV(phoneNumber, jobUrl, linkedinUrl, cvMediaUrl) {
     }
 
   } catch (error) {
-    console.error('CV generation error:', error);
-    throw error;
+    console.error('CV generation error:', error.message);
+    console.error('Error details:', error.response?.data || error.code);
+    
+    // Send user-friendly error
+    await sendWhatsAppMessage(phoneNumber,
+      `❌ *Generation failed!*\n\n` +
+      `Error: ${error.message}\n\n` +
+      `Send "reset" to try again.`
+    );
+    
+    // Reset state
+    updateState(phoneNumber, { state: STATES.WAITING_FOR_JOB_URL });
   }
 }
 
