@@ -323,28 +323,44 @@ async function processMessage(from, body, numMedia, mediaUrl) {
       case STATES.READY:
         // User sent message while in READY state
         if (isValidUrl(body)) {
-          // New job URL - generate again
-          await sendWhatsAppMessage(from,
-            `🎮 *FlashJobs activated!*\n\n` +
-            `✓ Using your saved profile\n` +
-            `(LinkedIn + Master CV)\n\n` +
-            `⚡ Generating CV...`
-          );
+          // New job URL - load saved profile and generate again
+          const savedProfile = await loadWhatsAppProfile(from);
+          
+          if (savedProfile && savedProfile.linkedin_url && savedProfile.master_cv_text) {
+            await sendWhatsAppMessage(from,
+              `🎮 *FlashJobs activated!*\n\n` +
+              `✓ Using your saved profile\n` +
+              `(LinkedIn + Master CV)\n\n` +
+              `⚡ Generating CV...`
+            );
 
-          updateState(from, {
-            state: STATES.GENERATING,
-            data: { ...state.data, jobUrl: body }
-          });
-
-          // Generate with saved profile
-          generateCVWithSavedProfile(from, body, state.data)
-            .catch(err => {
-              console.error('Generation error:', err);
-              sendWhatsAppMessage(from,
-                `❌ *Generation failed!*\n\n` +
-                `Send "reset" to start over.`
-              );
+            updateState(from, {
+              state: STATES.GENERATING,
+              data: { jobUrl: body }
             });
+
+            // Generate with saved profile from database
+            generateCVWithSavedProfile(from, body, savedProfile)
+              .catch(err => {
+                console.error('Generation error:', err);
+                sendWhatsAppMessage(from,
+                  `❌ *Generation failed!*\n\n` +
+                  `Send "reset" to start over.`
+                );
+              });
+          } else {
+            // No saved profile - restart flow
+            updateState(from, { 
+              state: STATES.WAITING_FOR_LINKEDIN,
+              data: { jobUrl: body }
+            });
+            
+            await sendWhatsAppMessage(from,
+              `🎮 *FlashJobs activated!*\n\n` +
+              `I need your profile data first.\n\n` +
+              `Send your LinkedIn URL 👇`
+            );
+          }
         } else {
           await sendWhatsAppMessage(from,
             `👋 *Ready to generate another CV?*\n\n` +
@@ -430,10 +446,17 @@ async function generateCV(phoneNumber, jobUrl, linkedinUrl, cvMediaUrl) {
 
     if (result.success) {
       // Save profile to database for future use
+      const cvTextToSave = cvTexts[0]?.text || '';
+      console.log('💾 Saving WhatsApp profile:', {
+        phoneNumber,
+        cvTextLength: cvTextToSave.length,
+        cvFilename: cvTexts[0]?.filename || 'cv.docx'
+      });
+      
       await saveWhatsAppProfile(
         phoneNumber,
         linkedinUrl,
-        cvTexts[0]?.text || '', // Save first CV text
+        cvTextToSave,
         cvTexts[0]?.filename || 'cv.docx'
       );
       
