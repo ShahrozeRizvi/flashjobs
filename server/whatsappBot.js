@@ -556,7 +556,6 @@ async function generateCVWithSavedProfile(phoneNumber, jobUrl, savedProfile) {
     updateState(phoneNumber, { state: STATES.WAITING_FOR_JOB_URL });
   }
 }
-}
 
 module.exports = {
   processMessage,
