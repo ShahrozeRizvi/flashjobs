@@ -1,7 +1,7 @@
 -- FlashJobs 2.0 Database Schema
 -- Run this in Railway PostgreSQL console
 
--- Users table
+-- Users table (for web OAuth users)
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   google_id VARCHAR(255) UNIQUE NOT NULL,
@@ -12,6 +12,21 @@ CREATE TABLE IF NOT EXISTS users (
   last_login TIMESTAMP DEFAULT NOW(),
   is_guest BOOLEAN DEFAULT FALSE
 );
+
+-- WhatsApp users table (for WhatsApp bot users)
+CREATE TABLE IF NOT EXISTS whatsapp_users (
+  id SERIAL PRIMARY KEY,
+  phone_number VARCHAR(50) UNIQUE NOT NULL,
+  linkedin_url TEXT,
+  linkedin_profile_data JSONB,
+  master_cv_text TEXT,
+  master_cv_filename VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW(),
+  last_used_at TIMESTAMP DEFAULT NOW(),
+  total_generations INTEGER DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_whatsapp_users_phone ON whatsapp_users(phone_number);
 
 -- User profiles (LinkedIn + master CV data)
 CREATE TABLE IF NOT EXISTS user_profiles (

@@ -1,6 +1,7 @@
 const twilio = require('twilio');
 const FormData = require('form-data');
 const axios = require('axios');
+const { pool } = require('./auth'); // Database connection
 
 // Lazy-load Twilio client (don't initialize at module load)
 let twilioClient = null;
@@ -54,6 +55,52 @@ function updateState(phoneNumber, updates) {
     ...updates,
     lastActivity: Date.now()
   });
+}
+
+/**
+ * Save WhatsApp user profile to database
+ */
+async function saveWhatsAppProfile(phoneNumber, linkedinUrl, cvText, cvFilename) {
+  try {
+    await pool.query(
+      `INSERT INTO whatsapp_users (phone_number, linkedin_url, master_cv_text, master_cv_filename, last_used_at, total_generations)
+       VALUES ($1, $2, $3, $4, NOW(), 1)
+       ON CONFLICT (phone_number) 
+       DO UPDATE SET 
+         linkedin_url = $2,
+         master_cv_text = $3,
+         master_cv_filename = $4,
+         last_used_at = NOW(),
+         total_generations = whatsapp_users.total_generations + 1`,
+      [phoneNumber, linkedinUrl, cvText, cvFilename]
+    );
+    console.log('✓ Saved WhatsApp user profile:', phoneNumber);
+  } catch (error) {
+    console.error('Error saving WhatsApp profile:', error);
+  }
+}
+
+/**
+ * Load WhatsApp user profile from database
+ */
+async function loadWhatsAppProfile(phoneNumber) {
+  try {
+    const result = await pool.query(
+      `SELECT linkedin_url, master_cv_text, master_cv_filename, total_generations
+       FROM whatsapp_users 
+       WHERE phone_number = $1`,
+      [phoneNumber]
+    );
+    
+    if (result.rows.length > 0) {
+      console.log('✓ Loaded WhatsApp user profile:', phoneNumber, `(${result.rows[0].total_generations} generations)`);
+      return result.rows[0];
+    }
+    return null;
+  } catch (error) {
+    console.error('Error loading WhatsApp profile:', error);
+    return null;
+  }
 }
 
 /**
@@ -156,18 +203,54 @@ async function processMessage(from, body, numMedia, mediaUrl) {
     switch (state.state) {
       case STATES.WAITING_FOR_JOB_URL:
         if (isValidUrl(body)) {
-          updateState(from, {
-            state: STATES.WAITING_FOR_LINKEDIN,
-            data: { ...state.data, jobUrl: body }
-          });
+          // Check if user has a saved profile
+          const savedProfile = await loadWhatsAppProfile(from);
           
-          await sendWhatsAppMessage(from,
-            `🎮 *FlashJobs activated!*\n\n` +
-            `I need 2 things to generate your CV:\n` +
-            `1️⃣ Your LinkedIn profile URL\n` +
-            `2️⃣ Your existing CV (.docx file)\n\n` +
-            `Send your LinkedIn URL first 👇`
-          );
+          if (savedProfile && savedProfile.linkedin_url && savedProfile.master_cv_text) {
+            // User has saved profile - generate directly!
+            await sendWhatsAppMessage(from,
+              `🎮 *FlashJobs activated!*\n\n` +
+              `✓ Using your saved profile\n` +
+              `(LinkedIn + Master CV)\n\n` +
+              `⚡ Generating tailored CV...\n` +
+              `This will take about 30 seconds! 🚀`
+            );
+            
+            updateState(from, {
+              state: STATES.GENERATING,
+              data: { 
+                jobUrl: body,
+                linkedinUrl: savedProfile.linkedin_url,
+                cvText: savedProfile.master_cv_text,
+                cvFilename: savedProfile.master_cv_filename,
+                usingSavedProfile: true
+              }
+            });
+            
+            // Generate with saved profile
+            generateCVWithSavedProfile(from, body, savedProfile)
+              .catch(err => {
+                console.error('Generation error:', err);
+                sendWhatsAppMessage(from,
+                  `❌ *Generation failed!*\n\n` +
+                  `Send "reset" to try again.`
+                );
+              });
+          } else {
+            // New user - need to collect profile
+            updateState(from, {
+              state: STATES.WAITING_FOR_LINKEDIN,
+              data: { ...state.data, jobUrl: body }
+            });
+            
+            await sendWhatsAppMessage(from,
+              `🎮 *FlashJobs activated!*\n\n` +
+              `I need 2 things to generate your CV:\n` +
+              `1️⃣ Your LinkedIn profile URL\n` +
+              `2️⃣ Your existing CV (.docx file)\n\n` +
+              `Send your LinkedIn URL first 👇`
+            );
+          }
         } else {
           await sendWhatsAppMessage(from,
             `❌ That doesn't look like a valid job URL.\n\n` +
@@ -346,6 +429,14 @@ async function generateCV(phoneNumber, jobUrl, linkedinUrl, cvMediaUrl) {
     console.log('✓ Generation complete');
 
     if (result.success) {
+      // Save profile to database for future use
+      await saveWhatsAppProfile(
+        phoneNumber,
+        linkedinUrl,
+        cvTexts[0]?.text || '', // Save first CV text
+        cvTexts[0]?.filename || 'cv.docx'
+      );
+      
       // Send success message with job details
       await sendWhatsAppMessage(phoneNumber,
         `✅ *Done! Your tailored CV is ready!*\n\n` +
@@ -389,16 +480,82 @@ async function generateCV(phoneNumber, jobUrl, linkedinUrl, cvMediaUrl) {
 /**
  * Generate CV with saved profile (returning user)
  */
-async function generateCVWithSavedProfile(phoneNumber, jobUrl, savedData) {
-  // Similar to generateCV but uses saved profile data
-  // Implementation follows same pattern
-  await sendWhatsAppMessage(phoneNumber,
-    `✅ *CV generated!*\n\n` +
-    `Using your saved profile.\n\n` +
-    `Send another job URL to generate more!`
-  );
+async function generateCVWithSavedProfile(phoneNumber, jobUrl, savedProfile) {
+  try {
+    const PORT = process.env.PORT || 3001;
+    const API_BASE = `http://127.0.0.1:${PORT}`;
+    const axiosConfig = {
+      timeout: 120000,
+      headers: { 'Content-Type': 'application/json' }
+    };
 
-  updateState(phoneNumber, { state: STATES.READY });
+    console.log('📱 Generating with saved profile for', phoneNumber);
+
+    // Parse LinkedIn (will return error but we continue)
+    const linkedinResponse = await axios.post(`${API_BASE}/api/parse-linkedin`, {
+      linkedinUrl: savedProfile.linkedin_url
+    }, axiosConfig).catch(() => ({ data: { profile: {} } }));
+    const profileData = linkedinResponse.data.profile;
+
+    // Use saved CV text directly
+    const cvTexts = [{
+      filename: savedProfile.master_cv_filename,
+      text: savedProfile.master_cv_text
+    }];
+
+    // Parse job
+    const jobResponse = await axios.post(`${API_BASE}/api/parse-job`, {
+      jobUrl
+    }, axiosConfig);
+    const jobData = jobResponse.data.job;
+
+    // Generate CV
+    const generateResponse = await axios.post(`${API_BASE}/api/generate-simple`, {
+      profile: profileData,
+      cvTexts,
+      jobData,
+      options: { generateCV: true, generateCoverLetter: false }
+    }, {
+      timeout: 180000
+    });
+
+    const result = generateResponse.data;
+
+    if (result.success) {
+      // Update usage count
+      await pool.query(
+        `UPDATE whatsapp_users 
+         SET total_generations = total_generations + 1, last_used_at = NOW()
+         WHERE phone_number = $1`,
+        [phoneNumber]
+      );
+
+      await sendWhatsAppMessage(phoneNumber,
+        `✅ *Done! Your tailored CV is ready!*\n\n` +
+        `📄 *Job:* ${result.jobData.title}\n` +
+        `🏢 *Company:* ${result.jobData.company}\n\n` +
+        `Download: https://flashjobs-production.up.railway.app/api/download/${result.sessionId}/cv\n\n` +
+        `Send another job URL to generate more! 🚀`
+      );
+
+      updateState(phoneNumber, { 
+        state: STATES.READY,
+        data: { sessionId: result.sessionId }
+      });
+    } else {
+      throw new Error(result.error || 'Generation failed');
+    }
+
+  } catch (error) {
+    console.error('Saved profile generation error:', error.message);
+    await sendWhatsAppMessage(phoneNumber,
+      `❌ *Generation failed!*\n\n` +
+      `Error: ${error.message}\n\n` +
+      `Send "reset" to try again.`
+    );
+    updateState(phoneNumber, { state: STATES.WAITING_FOR_JOB_URL });
+  }
+}
 }
 
 module.exports = {
