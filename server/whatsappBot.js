@@ -4,7 +4,7 @@ const axios = require('axios');
 const { pool } = require('./auth'); // Database connection
 
 // Configuration
-// Using global FREE_CV_LIMIT // Number of free CVs during testing phase - easy to change!
+const FREE_CV_LIMIT = 2; // Number of free CVs during testing phase - easy to change!
 
 // Lazy-load Twilio client (don't initialize at module load)
 let twilioClient = null;
