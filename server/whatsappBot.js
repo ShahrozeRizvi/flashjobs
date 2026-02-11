@@ -3,6 +3,9 @@ const FormData = require('form-data');
 const axios = require('axios');
 const { pool } = require('./auth'); // Database connection
 
+// Configuration
+// Using global FREE_CV_LIMIT // Number of free CVs during testing phase - easy to change!
+
 // Lazy-load Twilio client (don't initialize at module load)
 let twilioClient = null;
 
@@ -180,13 +183,20 @@ async function processMessage(from, body, numMedia, mediaUrl) {
   try {
     // Handle commands
     if (body.toLowerCase() === 'help') {
+      const savedProfile = await loadWhatsAppProfile(from);
+      const usageCount = savedProfile?.total_generations || 0;
+      // Using global FREE_CV_LIMIT
+      
       await sendWhatsAppMessage(from, 
-        `📋 *FlashJobs WhatsApp Bot Commands:*\n\n` +
+        `📋 *FlashJobs WhatsApp Bot*\n\n` +
+        `*Commands:*\n` +
         `• Send job URL → Generate CV\n` +
         `• "profile" → View saved data\n` +
+        `• "premium" → Learn about Premium\n` +
         `• "reset" → Start over\n` +
         `• "help" → Show this menu\n\n` +
-        `Visit FlashJobs.com for more!`
+        `*Your Usage:* ${usageCount}/${FREE_CV_LIMIT} free CVs\n\n` +
+        `Questions? Just ask! 🚀`
       );
       return;
     }
@@ -199,12 +209,40 @@ async function processMessage(from, body, numMedia, mediaUrl) {
       return;
     }
 
+    // Handle premium interest command
+    if (body.toLowerCase() === 'premium') {
+      const savedProfile = await loadWhatsAppProfile(from);
+      const usageCount = savedProfile?.total_generations || 0;
+      
+      await sendWhatsAppMessage(from,
+        `💎 *FlashJobs Premium*\n\n` +
+        `Your usage: ${usageCount}/${FREE_CV_LIMIT} CVs\n\n` +
+        `Premium is coming soon! 🚀\n` +
+        `Unlimited CV generation + more features.\n\n` +
+        `We'll notify you when it launches!`
+      );
+      return;
+    }
+
     // State machine for conversation flow
     switch (state.state) {
       case STATES.WAITING_FOR_JOB_URL:
         if (isValidUrl(body)) {
           // Check if user has a saved profile
           const savedProfile = await loadWhatsAppProfile(from);
+          
+          // Check usage limit (2 free CVs during testing phase)
+          // Using global FREE_CV_LIMIT
+          if (savedProfile && savedProfile.total_generations >= FREE_CV_LIMIT) {
+            await sendWhatsAppMessage(from,
+              `🎮 *You've hit your free usage limit!*\n\n` +
+              `You've generated ${savedProfile.total_generations} CVs (Max: ${FREE_CV_LIMIT} free)\n\n` +
+              `💎 *Premium coming soon!*\n` +
+              `Unlimited CV generation + priority support\n\n` +
+              `Want early access to premium? Reply "premium" 🚀`
+            );
+            return;
+          }
           
           if (savedProfile && savedProfile.linkedin_url && savedProfile.master_cv_text) {
             // User has saved profile - generate directly!
@@ -325,6 +363,19 @@ async function processMessage(from, body, numMedia, mediaUrl) {
         if (isValidUrl(body)) {
           // New job URL - load saved profile and generate again
           const savedProfile = await loadWhatsAppProfile(from);
+          
+          // Check usage limit (2 free CVs during testing phase)
+          // Using global FREE_CV_LIMIT
+          if (savedProfile && savedProfile.total_generations >= FREE_CV_LIMIT) {
+            await sendWhatsAppMessage(from,
+              `🎮 *You've hit your free usage limit!*\n\n` +
+              `You've generated ${savedProfile.total_generations} CVs (Max: ${FREE_CV_LIMIT} free)\n\n` +
+              `💎 *Premium coming soon!*\n` +
+              `Unlimited CV generation + priority support\n\n` +
+              `Want early access to premium? Reply "premium" 🚀`
+            );
+            return;
+          }
           
           if (savedProfile && savedProfile.linkedin_url && savedProfile.master_cv_text) {
             await sendWhatsAppMessage(from,
@@ -460,6 +511,11 @@ async function generateCV(phoneNumber, jobUrl, linkedinUrl, cvMediaUrl) {
         cvTexts[0]?.filename || 'cv.docx'
       );
       
+      // Get updated usage count
+      const updatedProfile = await loadWhatsAppProfile(phoneNumber);
+      // Using global FREE_CV_LIMIT
+      const remaining = FREE_CV_LIMIT - (updatedProfile?.total_generations || 0);
+      
       // Send success message with job details
       await sendWhatsAppMessage(phoneNumber,
         `✅ *Done! Your tailored CV is ready!*\n\n` +
@@ -467,6 +523,9 @@ async function generateCV(phoneNumber, jobUrl, linkedinUrl, cvMediaUrl) {
         `🏢 *Company:* ${result.jobData.company}\n\n` +
         `💡 *Your profile is saved!* Next time just send the job URL - that's it!\n\n` +
         `Download your CV at: https://flashjobs-production.up.railway.app/api/download/${result.sessionId}/cv\n\n` +
+        (remaining > 0 
+          ? `🎮 *Free CVs remaining:* ${remaining}/${FREE_CV_LIMIT}\n\n` 
+          : `💎 *You've used all free CVs!* Type "premium" to learn more\n\n`) +
         `Type "help" for commands.`
       );
 
@@ -553,11 +612,19 @@ async function generateCVWithSavedProfile(phoneNumber, jobUrl, savedProfile) {
         [phoneNumber]
       );
 
+      // Get updated usage count
+      const updatedProfile = await loadWhatsAppProfile(phoneNumber);
+      // Using global FREE_CV_LIMIT
+      const remaining = FREE_CV_LIMIT - (updatedProfile?.total_generations || 0);
+
       await sendWhatsAppMessage(phoneNumber,
         `✅ *Done! Your tailored CV is ready!*\n\n` +
         `📄 *Job:* ${result.jobData.title}\n` +
         `🏢 *Company:* ${result.jobData.company}\n\n` +
         `Download: https://flashjobs-production.up.railway.app/api/download/${result.sessionId}/cv\n\n` +
+        (remaining > 0 
+          ? `🎮 *Free CVs remaining:* ${remaining}/${FREE_CV_LIMIT}\n\n` 
+          : `💎 *You've used all free CVs!* Type "premium" to learn more\n\n`) +
         `Send another job URL to generate more! 🚀`
       );
 
